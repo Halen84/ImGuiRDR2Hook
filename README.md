@@ -2,8 +2,8 @@
  A Vulkan & DirectX 12 hook that allows you to create ImGui menus for RDR2
  
 # Prerequisites
-- [MinHook x64](https://github.com/TsudaKageyu/minhook)
-- [Kiero](https://github.com/Rebzzel/kiero)
+- [MinHook x64](https://github.com/TsudaKageyu/minhook) (Already included)
+- [Kiero](https://github.com/Rebzzel/kiero) (Already included)
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
  
 # Credits
