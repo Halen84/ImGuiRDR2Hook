@@ -4,8 +4,9 @@
 # Prerequisites
 - [MinHook x64](https://github.com/TsudaKageyu/minhook) (Already included)
 - [Kiero](https://github.com/Rebzzel/kiero) (Already included)
+- [ImGui](https://github.com/ocornut/imgui) (Already included)
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
  
 # Credits
-- [Sh0ckFR](https://github.com/Sh0ckFR)'s [Universal-Dear-ImGui-Hook](https://github.com/Sh0ckFR/Universal-Dear-ImGui-Hook)
-- [bruhmoment21](https://github.com/bruhmoment21)'s [UniversalHookX](https://github.com/bruhmoment21/UniversalHookX)
+- [Sh0ckFR/Universal-Dear-ImGui-Hook](https://github.com/Sh0ckFR/Universal-Dear-ImGui-Hook) (DirectX 12 Code)
+- [bruhmoment21/UniversalHookX](https://github.com/bruhmoment21/UniversalHookX) (Vulkan Code)
