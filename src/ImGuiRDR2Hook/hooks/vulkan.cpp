@@ -353,6 +353,7 @@ void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.IniFilename = io.LogFilename = NULL;
+		ImGui::StyleColorsDark();
 	}
 
 	for (uint32_t i = 0; i < pPresentInfo->swapchainCount; ++i)

@@ -7,8 +7,8 @@ void main()
 {
 	while (true)
 	{
-		// See hooks/vulkan.cpp --> RenderImGui_Vulkan() for drawing the mouse in Vulkan
-		// See hooks/dx12.cpp --> hk_Present() for drawing the mouse in DirectX 12
+		// See hooks/vulkan.cpp --> RenderImGui_Vulkan() for drawing the mouse cursor and changing the style in Vulkan
+		// See hooks/dx12.cpp --> hk_Present() for drawing the mouse cursor and changing the style in DirectX 12
 		if (IsKeyJustUp(VK_F5)) {
 			CMenu::bIsOpen ^= true;
 		}
