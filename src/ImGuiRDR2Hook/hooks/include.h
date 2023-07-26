@@ -11,6 +11,10 @@
 #include "../imgui/imgui_impl_vulkan.h"
 
 
+// Set whether the hooks should log debug information
+#define _LOGGING_ENABLED 0
+
+
 namespace hooks {
 
 #ifdef DX12_HOOK
@@ -66,6 +70,7 @@ namespace hooks {
 
 inline void Log(const char* format, ...)
 {
+#if _LOGGING_ENABLED
 	std::ofstream file("ImGuiRDR2Hook.log", std::ios::app);
 	std::ostringstream msg;
 	
@@ -77,4 +82,5 @@ inline void Log(const char* format, ...)
 
 	msg << buf << '\n';
 	file << msg.str();
+#endif
 }
