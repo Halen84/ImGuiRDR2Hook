@@ -1,3 +1,5 @@
+// Licensed under the MIT License - Halen84 (TuffyTown)
+
 #include "script.h"
 #include "keyboard.h"
 #include "menu.h"

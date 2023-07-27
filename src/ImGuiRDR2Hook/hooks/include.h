@@ -1,3 +1,5 @@
+// Licensed under the MIT License - Halen84 (TuffyTown)
+
 #pragma once
 #include <Windows.h>
 #include <fstream>

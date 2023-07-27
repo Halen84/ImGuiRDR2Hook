@@ -1,3 +1,5 @@
+// Licensed under the MIT License - Halen84 (TuffyTown)
+
 #include "..\..\inc\main.h"
 #include "script.h"
 #include "keyboard.h"

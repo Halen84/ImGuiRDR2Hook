@@ -1,3 +1,5 @@
+// Licensed under the MIT License - Halen84 (TuffyTown)
+
 #include "menu.h"
 
 bool CMenu::bIsOpen = false;
