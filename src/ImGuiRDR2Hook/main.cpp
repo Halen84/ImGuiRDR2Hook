@@ -96,6 +96,7 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 	case DLL_PROCESS_DETACH:
 		bVulkanInitialized = false;
 		bDX12Initialized = false;
+		bReadConfigFile = false;
 
 		if (hooks::g_bUsingDX12Hook) {
 			hooks::dx12::Unhook();
