@@ -1,0 +1,5 @@
+// Set if this hook should use DirectX 12 Graphics API.
+bUseDirectX12=false
+
+// Set if this hook should use Vulkan Graphics API. This is the default API.
+bUseVulkan=true

@@ -16,14 +16,8 @@
 
 
 namespace hooks {
-
-#ifdef DX12_HOOK
-	inline constexpr bool g_bUsingVulkanHook = false;
-	inline constexpr bool g_bUsingDX12Hook = true;
-#elif VULKAN_HOOK
-	inline constexpr bool g_bUsingVulkanHook = true;
-	inline constexpr bool g_bUsingDX12Hook = false;
-#endif
+	inline bool g_bUsingDX12Hook = false;
+	inline bool g_bUsingVulkanHook = true;
 
 	inline HWND g_hWnd = NULL;
 	inline bool g_bShutdownRequested = false;
