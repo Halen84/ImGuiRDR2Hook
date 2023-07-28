@@ -24,8 +24,6 @@
 *.lai
 *.la
 *.a
-src/lib/Release/libMinHook.x64.lib
-src/lib/Debug/libMinHook.x64.lib
 
 # Executables
 *.exe
