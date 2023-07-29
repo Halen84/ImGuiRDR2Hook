@@ -4,11 +4,8 @@
 
 bool CMenu::bIsOpen = false;
 
-namespace ImGuiVars
-{
-	char buffer[256]{};
-	float floatVal = 0.0f;
-}
+char arBuffer[256]{};
+float fFloatValue = 0.0f;
 
 void CMenu::Draw()
 {
@@ -20,8 +17,8 @@ void CMenu::Draw()
 		if (ImGui::Button("Button")) {
 			// Do something when button is pressed
 		}
-		ImGui::InputText("string", ImGuiVars::buffer, IM_ARRAYSIZE(ImGuiVars::buffer));
-		ImGui::SliderFloat("float", &ImGuiVars::floatVal, 0.0f, 1.0f);
+		ImGui::InputText("string", arBuffer, IM_ARRAYSIZE(arBuffer));
+		ImGui::SliderFloat("float", &fFloatValue, 0.0f, 1.0f);
 
 		ImGui::End();
 	}
