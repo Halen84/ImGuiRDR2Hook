@@ -13,3 +13,6 @@
 #include "..\..\inc\main.h"
 
 void ScriptMain();
+
+// NOTE: Use this function instead of Scripthook's WAIT (scriptWait) function to prevent a crash. 
+void WaitAndRender(unsigned ms);

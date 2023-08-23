@@ -337,7 +337,7 @@ bool DoesQueueSupportGraphic(VkQueue queue, VkQueue* pGraphicQueue)
 	return false;
 }
 
-void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
+void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
 	if (!g_Device || hooks::g_bShutdownRequested)
 		return;
@@ -510,7 +510,9 @@ VkResult VKAPI_CALL hk_vkAcquireNextImage2KHR(VkDevice device, const VkAcquireNe
 std::add_pointer_t<VkResult VKAPI_CALL(VkQueue, const VkPresentInfoKHR*)> oQueuePresentKHR;
 VkResult VKAPI_CALL hk_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
-	RenderImGui_Vulkan(queue, pPresentInfo);
+	hooks::vulkan::m_queue = queue;
+	hooks::vulkan::m_pPresentInfo = pPresentInfo;
+	hooks::vulkan::RenderImGui_Vulkan(queue, pPresentInfo);
 
 	return oQueuePresentKHR(queue, pPresentInfo);
 }

@@ -4,7 +4,6 @@
 #include "dx12.h"
 #include "win32.h"
 #include <d3d12.h>
-#include <dxgi1_4.h>
 #pragma comment(lib, "libMinHook.x64.lib")
 
 ID3D12Device* g_d3d12Device = nullptr;
@@ -28,8 +27,12 @@ FrameContext* pFrameContext;
 
 typedef long(__fastcall* Present_t) (IDXGISwapChain*, UINT, UINT);
 Present_t og_Present{};
-long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
+long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
 {
+	m_pSwapChain = pSwapChain;
+	m_SyncInterval = SyncInterval;
+	m_Flags = Flags;
+
 	if (!hooks::g_bImGuiInitialized)
 	{
 		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device), (void**)&g_d3d12Device)))

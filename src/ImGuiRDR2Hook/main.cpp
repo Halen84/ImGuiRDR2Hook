@@ -76,6 +76,10 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 	{
 	case DLL_PROCESS_ATTACH:
 
+		if (hooks::g_bUsingDX12Hook == false && hooks::g_bUsingVulkanHook == false) {
+			hooks::g_bUsingVulkanHook = true;
+		}
+
 		if (!bReadConfigFile) {
 			readConfigFile();
 		}
