@@ -18,12 +18,12 @@
 
 
 namespace hooks {
-	inline bool g_bUsingDX12Hook = false;
-	inline bool g_bUsingVulkanHook = true;
+	inline bool bUsingDX12Hook = false;
+	inline bool bUsingVulkanHook = true;
 
-	inline HWND g_hWnd = NULL;
-	inline bool g_bShutdownRequested = false;
-	inline bool g_bImGuiInitialized = false;
+	inline HWND hWnd = NULL;
+	inline bool bShutdownRequested = false;
+	inline bool bImGuiInitialized = false;
 	
 	inline const char* KieroStatusEnumToString(kiero::Status::Enum status)
 	{

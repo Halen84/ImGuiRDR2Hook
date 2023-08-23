@@ -39,11 +39,11 @@ void WaitAndRender(unsigned ms)
 	while (GetTickCount() < time || !waited)
 	{
 		WAIT(0);
-		if (hooks::g_bUsingVulkanHook)
+		if (hooks::bUsingVulkanHook)
 		{
 			hooks::vulkan::RenderImGui_Vulkan(m_queue, m_pPresentInfo);
 		}
-		else if (hooks::g_bUsingDX12Hook)
+		else if (hooks::bUsingDX12Hook)
 		{
 			hooks::dx12::hk_Present(m_pSwapChain, m_SyncInterval, m_Flags);
 		}

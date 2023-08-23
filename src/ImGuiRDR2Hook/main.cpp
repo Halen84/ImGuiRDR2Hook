@@ -20,13 +20,17 @@ bool bReadConfigFile = false;
 
 void readConfigFile() noexcept
 {
+	if (hooks::bUsingDX12Hook == false && hooks::bUsingVulkanHook == false) {
+		hooks::bUsingVulkanHook = true;
+	}
+
 	std::ifstream file(PROJECT_NAME "_config.txt", std::ios::in);
 
 	// File doesn't exist, default to use Vulkan API
 	if (!file.good()) {
 		bReadConfigFile = true;
-		hooks::g_bUsingDX12Hook = false;
-		hooks::g_bUsingVulkanHook = true;
+		hooks::bUsingDX12Hook = false;
+		hooks::bUsingVulkanHook = true;
 		return;
 	}
 
@@ -40,29 +44,29 @@ void readConfigFile() noexcept
 
 			if (field == "bUseDirectX12") {
 				if (value != "true") {
-					hooks::g_bUsingDX12Hook = false;
+					hooks::bUsingDX12Hook = false;
 				}
 				else {
-					hooks::g_bUsingDX12Hook = true;
+					hooks::bUsingDX12Hook = true;
 				}
 			}
 			else if (field == "bUseVulkan") {
 				if (value != "true") {
-					hooks::g_bUsingVulkanHook = false;
+					hooks::bUsingVulkanHook = false;
 				}
 				else {
-					hooks::g_bUsingVulkanHook = true;
+					hooks::bUsingVulkanHook = true;
 				}
 			}
 		}
 	}
 
 	// Default to use Vulkan API
-	if (hooks::g_bUsingDX12Hook == false && hooks::g_bUsingVulkanHook == false) {
-		hooks::g_bUsingVulkanHook = true;
+	if (hooks::bUsingDX12Hook == false && hooks::bUsingVulkanHook == false) {
+		hooks::bUsingVulkanHook = true;
 	}
-	else if (hooks::g_bUsingDX12Hook == true && hooks::g_bUsingVulkanHook == true) {
-		hooks::g_bUsingDX12Hook = false;
+	else if (hooks::bUsingDX12Hook == true && hooks::bUsingVulkanHook == true) {
+		hooks::bUsingDX12Hook = false;
 	}
 
 	bReadConfigFile = true;
@@ -75,21 +79,16 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 	switch (reason)
 	{
 	case DLL_PROCESS_ATTACH:
-
-		if (hooks::g_bUsingDX12Hook == false && hooks::g_bUsingVulkanHook == false) {
-			hooks::g_bUsingVulkanHook = true;
-		}
-
 		if (!bReadConfigFile) {
 			readConfigFile();
 		}
 
-		if (!bVulkanInitialized && hooks::g_bUsingVulkanHook) {
+		if (!bVulkanInitialized && hooks::bUsingVulkanHook) {
 			hooks::vulkan::Hook();
 			bVulkanInitialized = true;
 		}
 
-		if (!bDX12Initialized && hooks::g_bUsingDX12Hook) {
+		if (!bDX12Initialized && hooks::bUsingDX12Hook) {
 			hooks::dx12::Hook();
 			bVulkanInitialized = true;
 		}
@@ -104,10 +103,10 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 		bDX12Initialized = false;
 		bReadConfigFile = false;
 
-		if (hooks::g_bUsingDX12Hook) {
+		if (hooks::bUsingDX12Hook) {
 			hooks::dx12::Unhook();
 		}
-		else if (hooks::g_bUsingVulkanHook) {
+		else if (hooks::bUsingVulkanHook) {
 			hooks::vulkan::Unhook();
 		}
 

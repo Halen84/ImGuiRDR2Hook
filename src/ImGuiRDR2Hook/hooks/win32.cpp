@@ -20,12 +20,12 @@ namespace win32 {
 	
 	void Hook()
 	{
-		og_WndProc = (WNDPROC)SetWindowLongPtr(g_hWnd, GWLP_WNDPROC, (__int3264)(LONG_PTR)WndProc);
+		og_WndProc = (WNDPROC)SetWindowLongPtr(hWnd, GWLP_WNDPROC, (__int3264)(LONG_PTR)WndProc);
 	}
 
 	void Unhook()
 	{
-		SetWindowLongPtr(g_hWnd, GWLP_WNDPROC, (LONG_PTR)og_WndProc);
+		SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR)og_WndProc);
 	}
 
 } // namespace win32

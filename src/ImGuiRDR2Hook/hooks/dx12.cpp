@@ -33,12 +33,12 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 	m_SyncInterval = SyncInterval;
 	m_Flags = Flags;
 
-	if (!hooks::g_bImGuiInitialized)
+	if (!hooks::bImGuiInitialized)
 	{
 		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device), (void**)&g_d3d12Device)))
 		{
 			Log("[+] DX12: winerror.h SUCCEEDED() - Pass");
-			hooks::g_hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
+			hooks::hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
 
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
@@ -57,8 +57,8 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 			DXGI_SWAP_CHAIN_DESC sdesc;
 			pSwapChain->GetDesc(&sdesc);
 			sdesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-			sdesc.OutputWindow = hooks::g_hWnd;
-			sdesc.Windowed = ((GetWindowLongPtr(hooks::g_hWnd, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+			sdesc.OutputWindow = hooks::hWnd;
+			sdesc.Windowed = ((GetWindowLongPtr(hooks::hWnd, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
 
 			uBuffersCounts = sdesc.BufferCount;
 			pFrameContext = new FrameContext[uBuffersCounts];
@@ -115,7 +115,7 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 				rtvHandle.ptr += rtvDescriptorSize;
 			}
 
-			ImGui_ImplWin32_Init(hooks::g_hWnd);
+			ImGui_ImplWin32_Init(hooks::hWnd);
 			ImGui_ImplDX12_Init
 			(
 				g_d3d12Device,
@@ -134,10 +134,10 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 			Log("[!] DX12: winerror.h SUCCEEDED() - FAILED");
 		}
 
-		hooks::g_bImGuiInitialized = true;
+		hooks::bImGuiInitialized = true;
 	}
 
-	if (!hooks::g_bShutdownRequested)
+	if (!hooks::bShutdownRequested)
 	{
 		if (g_d3d12CommandQueue == nullptr) {
 			return og_Present(pSwapChain, SyncInterval, Flags);
@@ -237,7 +237,7 @@ namespace dx12 {
 	{
 		Log("[!] DX12: Unhooking...");
 
-		g_bShutdownRequested = true;
+		bShutdownRequested = true;
 
 		if (g_d3d12Device) g_d3d12Device->Release();
 		if (g_d3d12DescriptorHeapBackBuffers) g_d3d12DescriptorHeapBackBuffers->Release();

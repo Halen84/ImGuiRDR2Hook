@@ -339,16 +339,16 @@ bool DoesQueueSupportGraphic(VkQueue queue, VkQueue* pGraphicQueue)
 
 void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
-	if (!g_Device || hooks::g_bShutdownRequested)
+	if (!g_Device || hooks::bShutdownRequested)
 		return;
 
 	VkQueue graphicQueue = VK_NULL_HANDLE;
 	const bool queueSupportsGraphic = DoesQueueSupportGraphic(queue, &graphicQueue);
 
 	if (!ImGui::GetCurrentContext()) {
-		hooks::g_hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
+		hooks::hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
 		ImGui::CreateContext();
-		ImGui_ImplWin32_Init(hooks::g_hWnd);
+		ImGui_ImplWin32_Init(hooks::hWnd);
 		hooks::win32::Hook();
 
 		ImGuiIO& io = ImGui::GetIO();
@@ -585,7 +585,7 @@ namespace vulkan {
 	{
 		Log("[!] Vulkan: Unhooking...");
 
-		g_bShutdownRequested = true;
+		bShutdownRequested = true;
 
 		if (ImGui::GetCurrentContext())
 		{
