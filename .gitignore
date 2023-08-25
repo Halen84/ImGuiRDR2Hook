@@ -33,3 +33,5 @@
 # Folders
 .vs
 tmp
+src/lib/Release/
+src/x64/Release/
