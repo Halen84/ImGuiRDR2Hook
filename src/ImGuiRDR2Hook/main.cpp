@@ -18,19 +18,19 @@ bool bDX12Initialized = false;
 bool bReadConfigFile = false;
 
 
+// Note: This config file is not required. You can hardcode to use Vulkan or DX12 in hooks/include.h
 void readConfigFile() noexcept
 {
+	// Default to use Vulkan API
 	if (hooks::bUsingDX12Hook == false && hooks::bUsingVulkanHook == false) {
 		hooks::bUsingVulkanHook = true;
 	}
 
 	std::ifstream file(PROJECT_NAME "_config.txt", std::ios::in);
 
-	// File doesn't exist, default to use Vulkan API
+	// File doesn't exist, abort
 	if (!file.good()) {
 		bReadConfigFile = true;
-		hooks::bUsingDX12Hook = false;
-		hooks::bUsingVulkanHook = true;
 		return;
 	}
 
