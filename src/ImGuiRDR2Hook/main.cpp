@@ -25,6 +25,9 @@ void readConfigFile() noexcept
 	if (hooks::bUsingDX12Hook == false && hooks::bUsingVulkanHook == false) {
 		hooks::bUsingVulkanHook = true;
 	}
+	else if (hooks::bUsingDX12Hook == true && hooks::bUsingVulkanHook == true) {
+		hooks::bUsingDX12Hook = false;
+	}
 
 	std::ifstream file(PROJECT_NAME "_config.txt", std::ios::in);
 
