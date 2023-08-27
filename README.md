@@ -11,7 +11,7 @@
 Before trying to compile the main project, you must first compile MinHook (libMinHook) so the main project can reference some required files.
 There's really not much to set up, but you must first make sure you have Vulkan SDK installed, which can be found here: [https://vulkan.lunarg.com/sdk/home](https://vulkan.lunarg.com/sdk/home). You may need to restart Visual Studio after installing the Vulkan SDK.
 
-- **Note: <u>Use WaitAndRender() instead of WAIT() to prevent a crash!</u> This function renders ImGui while yielding. Also see #2**
+- **Note: <u>Use WaitAndRender() instead of WAIT() to prevent a crash!</u> This function renders ImGui while yielding. Also see https://github.com/Halen84/ImGuiRDR2Hook/issues/2**
 - Do not touch anything in the `hooks` folder unless you know what you're doing!
 - script.cpp still contains the main loop for the script.
 - menu.cpp/.h is where the ImGui menu is drawn.
