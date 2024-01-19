@@ -13,7 +13,11 @@ void main()
 	{
 		// See hooks/vulkan.cpp --> RenderImGui_Vulkan() for drawing the mouse cursor and changing the style in Vulkan
 		// See hooks/dx12.cpp --> hk_Present() for drawing the mouse cursor and changing the style in DirectX 12
-		if (IsKeyJustUp(VK_F5)) {
+		
+		// ScriptHook's IsKey... functions don't work while a ImGui window is open (see #4 on GitHub)
+		// If you want to change which key opens and closes the menu, also see menu.cpp
+		if (IsKeyJustUp(VK_F5))
+		{
 			CMenu::bIsOpen ^= true;
 		}
 
@@ -39,6 +43,7 @@ void WaitAndRender(unsigned ms)
 	while (GetTickCount() < time || !waited)
 	{
 		WAIT(0);
+		// This doesn't really work that well (see #2 on GitHub)
 		if (hooks::bUsingVulkanHook)
 		{
 			hooks::vulkan::RenderImGui_Vulkan(m_queue, m_pPresentInfo);
