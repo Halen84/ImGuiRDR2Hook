@@ -544,12 +544,13 @@ namespace vulkan {
 
 		MH_Initialize();
 
-		void* fpAcquireNextImageKHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkAcquireNextImageKHR"));
+		void* fpAcquireNextImageKHR  = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkAcquireNextImageKHR"));
 		void* fpAcquireNextImage2KHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkAcquireNextImage2KHR"));
-		void* fpQueuePresentKHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkQueuePresentKHR"));
-		void* fpCreateSwapchainKHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkCreateSwapchainKHR"));
+		void* fpQueuePresentKHR      = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkQueuePresentKHR"));
+		void* fpCreateSwapchainKHR   = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkCreateSwapchainKHR"));
 
-		// FIXME: Calling vkDestroyDevice() anywhere will causes RDR2 to hang - Unfixable?
+		// TODO: Calling vkDestroyDevice() anywhere will causes RDR2 to hang and or crash - Unfixable?
+		// Does this cause a memory leak then?
 		/*if (g_FakeDevice) {
 			vkDestroyDevice(g_FakeDevice, g_Allocator);
 			g_FakeDevice = NULL;
@@ -561,19 +562,19 @@ namespace vulkan {
 			Log("[+] Vulkan: fpQueuePresentKHR:      0x%p", fpQueuePresentKHR);
 			Log("[+] Vulkan: fpCreateSwapchainKHR:   0x%p", fpCreateSwapchainKHR);
 
-			MH_STATUS aniStatus = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImageKHR), &hk_vkAcquireNextImageKHR, reinterpret_cast<void**>(&oAcquireNextImageKHR));
+			MH_STATUS aniStatus  = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImageKHR),  &hk_vkAcquireNextImageKHR,  reinterpret_cast<void**>(&oAcquireNextImageKHR));
 			MH_STATUS ani2Status = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImage2KHR), &hk_vkAcquireNextImage2KHR, reinterpret_cast<void**>(&oAcquireNextImage2KHR));
-			MH_STATUS qpStatus = MH_CreateHook(reinterpret_cast<void**>(fpQueuePresentKHR), &hk_vkQueuePresentKHR, reinterpret_cast<void**>(&oQueuePresentKHR));
-			MH_STATUS csStatus = MH_CreateHook(reinterpret_cast<void**>(fpCreateSwapchainKHR), &hk_vkCreateSwapchainKHR, reinterpret_cast<void**>(&oCreateSwapchainKHR));
+			MH_STATUS qpStatus   = MH_CreateHook(reinterpret_cast<void**>(fpQueuePresentKHR),      &hk_vkQueuePresentKHR,      reinterpret_cast<void**>(&oQueuePresentKHR));
+			MH_STATUS csStatus   = MH_CreateHook(reinterpret_cast<void**>(fpCreateSwapchainKHR),   &hk_vkCreateSwapchainKHR,   reinterpret_cast<void**>(&oCreateSwapchainKHR));
 			Log("[+] Vulkan: MH_CreateHook() aniStatus:  %s", MHStatusToString(aniStatus));
 			Log("[+] Vulkan: MH_CreateHook() ani2Status: %s", MHStatusToString(ani2Status));
 			Log("[+] Vulkan: MH_CreateHook() qpStatus:   %s", MHStatusToString(qpStatus));
 			Log("[+] Vulkan: MH_CreateHook() csStatus:   %s", MHStatusToString(csStatus));
 
-			aniStatus = MH_EnableHook(fpAcquireNextImageKHR);
+			aniStatus  = MH_EnableHook(fpAcquireNextImageKHR);
 			ani2Status = MH_EnableHook(fpAcquireNextImage2KHR);
-			qpStatus = MH_EnableHook(fpQueuePresentKHR);
-			csStatus = MH_EnableHook(fpCreateSwapchainKHR);
+			qpStatus   = MH_EnableHook(fpQueuePresentKHR);
+			csStatus   = MH_EnableHook(fpCreateSwapchainKHR);
 			Log("[+] Vulkan: MH_EnableHook() aniStatus:  %s", MHStatusToString(aniStatus));
 			Log("[+] Vulkan: MH_EnableHook() ani2Status: %s", MHStatusToString(ani2Status));
 			Log("[+] Vulkan: MH_EnableHook() qpStatus:   %s", MHStatusToString(qpStatus));

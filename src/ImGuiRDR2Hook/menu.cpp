@@ -22,6 +22,7 @@ void CMenu::Draw()
 		// to be disabled while the ImGui menu is open.
 		DisableAllControlActionsThisFrame();
 
+		ImGui::SetNextWindowSize({250, 200}, ImGuiCond_Once);
 		ImGui::Begin("ImGui Menu", &bIsOpen, bIsOpen ? 0 : ImGuiWindowFlags_NoMouseInputs);
 
 		ImGui::Text("Hello, world %d", 123);
