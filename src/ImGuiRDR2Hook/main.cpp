@@ -189,7 +189,7 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 		if (!bDX12Initialized && hooks::bUsingDX12Hook)
 		{
 			hooks::dx12::Hook();
-			bVulkanInitialized = true;
+			bDX12Initialized = true;
 		}
 
 		// hooks::win32::Hook() is automatically called
