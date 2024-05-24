@@ -305,10 +305,12 @@ void CleanupDeviceVulkan()
 		vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
 		g_DescriptorPool = NULL;
 	}
-	if (g_Instance) {
-		vkDestroyInstance(g_Instance, g_Allocator);
-		g_Instance = NULL;
-	}
+	
+	// See #5 on GitHub (https://github.com/Halen84/ImGuiRDR2Hook/issues/5)
+	//if (g_Instance) {
+	//	vkDestroyInstance(g_Instance, g_Allocator);
+	//	g_Instance = NULL;
+	//}
 
 	g_ImageExtent = {};
 	g_Device = NULL;
