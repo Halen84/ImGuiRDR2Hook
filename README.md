@@ -11,14 +11,10 @@
 Before trying to compile the main project, you must first compile MinHook (libMinHook) so the main project can reference some required files.
 There's really not much to set up, but you must first make sure you have Vulkan SDK installed, which can be found here: [https://vulkan.lunarg.com/sdk/home](https://vulkan.lunarg.com/sdk/home). You may need to restart Visual Studio after installing the Vulkan SDK.
 
-- **Note: <u>Use WaitAndRender() instead of WAIT() to prevent a crash!</u> This function renders ImGui while yielding. Also see https://github.com/Halen84/ImGuiRDR2Hook/issues/2**
-- Do not touch anything in the `hooks` folder unless you know what you're doing!
+- If you wish to change the toggle key or edit mouse behavior, see `Win32.cpp`.
 - script.cpp still contains the main loop for the script.
-- menu.cpp/.h is where the ImGui menu is drawn.
-- main.cpp is where the hook functions are called
-- See hooks/vulkan.cpp --> RenderImGui_Vulkan() for drawing the mouse cursor and changing the style in Vulkan
-- See hooks/dx12.cpp --> hk_Present() for drawing the mouse cursor and changing the style in DirectX 12
-- See main.cpp for reading from the config file and system.xml
+- menu.cpp/.h is where the ImGui menu is rendered.
+- main.cpp contains code that reads config files + ScriptHook registry
  
 # Credits
 - [Sh0ckFR/Universal-Dear-ImGui-Hook](https://github.com/Sh0ckFR/Universal-Dear-ImGui-Hook) (DirectX 12 Code)
