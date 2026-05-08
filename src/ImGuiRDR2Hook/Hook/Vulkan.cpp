@@ -1,36 +1,35 @@
 // Code modified from: https://github.com/bruhmoment21/UniversalHookX/blob/main/UniversalHookX/src/hooks/backend/vulkan/hook_vulkan.cpp
 // Big thanks to bruhmoment21
 
-#include "vulkan.h"
-#include "win32.h"
+#include "Manager.h"
 #include <vector>
 #include <vulkan/vulkan.h>
 #pragma comment(lib, "vulkan-1.lib")
 
-VkAllocationCallbacks* g_Allocator = NULL;
-VkInstance g_Instance = VK_NULL_HANDLE;
-VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
-VkDevice g_FakeDevice = VK_NULL_HANDLE;
-VkDevice g_Device = VK_NULL_HANDLE;
+static VkAllocationCallbacks* g_Allocator = NULL;
+static VkInstance g_Instance = VK_NULL_HANDLE;
+static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
+static VkDevice g_TempDevice = VK_NULL_HANDLE;
+static VkDevice g_Device = VK_NULL_HANDLE;
+ 
+static uint32_t g_QueueFamily = (uint32_t)-1;
+static std::vector<VkQueueFamilyProperties> g_QueueFamilies;
+ 
+static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
+static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
+static uint32_t g_MinImageCount = 2;
+static VkRenderPass g_RenderPass = VK_NULL_HANDLE;
+static ImGui_ImplVulkanH_Frame g_Frames[8] = {};
+static ImGui_ImplVulkanH_FrameSemaphores g_FrameSemaphores[8] = {};
+static VkExtent2D g_ImageExtent = {};
 
-uint32_t g_QueueFamily = (uint32_t)-1;
-std::vector<VkQueueFamilyProperties> g_QueueFamilies;
 
-VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
-VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
-uint32_t g_MinImageCount = 2;
-VkRenderPass g_RenderPass = VK_NULL_HANDLE;
-ImGui_ImplVulkanH_Frame g_Frames[8] = {};
-ImGui_ImplVulkanH_FrameSemaphores g_FrameSemaphores[8] = {};
-VkExtent2D g_ImageExtent = {};
-
-
-bool CreateDeviceVK()
+static bool CreateDeviceVK()
 {
 	// Create Vulkan Instance
 	{
 		VkInstanceCreateInfo create_info = {};
-		constexpr const char* instance_extension = "VK_KHR_surface";
+		constexpr const char* instance_extension = VK_KHR_SURFACE_EXTENSION_NAME;
 
 		create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		create_info.enabledExtensionCount = 1;
@@ -41,12 +40,11 @@ bool CreateDeviceVK()
 			Log("[!] Vulkan: vkCreateInstance() FAILED for g_Instance");
 			return false;
 		}
-		Log("[+] Vulkan: g_Instance: 0x%p", g_Instance);
 	}
 
 	// Select GPU
 	{
-		uint32_t gpu_count;
+		uint32_t gpu_count{};
 		vkEnumeratePhysicalDevices(g_Instance, &gpu_count, NULL);
 		IM_ASSERT(gpu_count > 0);
 
@@ -58,7 +56,7 @@ bool CreateDeviceVK()
 		// dedicated GPUs) is out of scope of this sample.
 		int use_gpu = 0;
 		for (int i = 0; i < (int)gpu_count; ++i) {
-			VkPhysicalDeviceProperties properties;
+			VkPhysicalDeviceProperties properties{};
 			vkGetPhysicalDeviceProperties(gpus[i], &properties);
 			if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 				use_gpu = i;
@@ -67,14 +65,12 @@ bool CreateDeviceVK()
 		}
 
 		g_PhysicalDevice = gpus[use_gpu];
-		Log("[+] Vulkan: g_PhysicalDevice: 0x%p", g_PhysicalDevice);
-
 		delete[] gpus;
 	}
 
 	// Select graphics queue family
 	{
-		uint32_t count;
+		uint32_t count{};
 		vkGetPhysicalDeviceQueueFamilyProperties(g_PhysicalDevice, &count, NULL);
 		g_QueueFamilies.resize(count);
 		vkGetPhysicalDeviceQueueFamilyProperties(g_PhysicalDevice, &count, g_QueueFamilies.data());
@@ -85,14 +81,12 @@ bool CreateDeviceVK()
 			}
 		}
 		IM_ASSERT(g_QueueFamily != (uint32_t)-1);
-
-		Log("[+] Vulkan: g_QueueFamily: %u", g_QueueFamily);
 	}
 
-	// Create Logical Device (with 1 queue)
+	// Create Logical Device (with no queue)
 	{
-		constexpr const char* device_extension = "VK_KHR_swapchain";
-		constexpr const float queue_priority = 1.0f;
+		constexpr const char* device_extension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+		constexpr float queue_priority = 1.0f;
 
 		VkDeviceQueueCreateInfo queue_info = {};
 		queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -107,17 +101,17 @@ bool CreateDeviceVK()
 		create_info.enabledExtensionCount = 1;
 		create_info.ppEnabledExtensionNames = &device_extension;
 
-		if (vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_FakeDevice) != VK_SUCCESS) {
-			Log("[!] Vulkan: vkCreateDevice() FAILED for g_FakeDevice");
+		VkResult result = vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_TempDevice);
+		if (result != VK_SUCCESS) {
+			Log("[!] Vulkan: vkCreateDevice() FAILED for g_TempDevice");
 			return false;
 		}
-		Log("[+] Vulkan: g_FakeDevice: 0x%p", g_FakeDevice);
 	}
 
 	return true;
 }
 
-void CreateRenderTarget(VkDevice device, VkSwapchainKHR swapchain)
+static void CreateRenderTarget(VkDevice device, VkSwapchainKHR swapchain)
 {
 	uint32_t uImageCount;
 	vkGetSwapchainImagesKHR(device, swapchain, &uImageCount, NULL);
@@ -221,6 +215,8 @@ void CreateRenderTarget(VkDevice device, VkSwapchainKHR swapchain)
 		info.renderPass = g_RenderPass;
 		info.attachmentCount = 1;
 		info.pAttachments = attachment;
+		info.width = g_ImageExtent.width;
+		info.height = g_ImageExtent.height;
 		info.layers = 1;
 
 		for (uint32_t i = 0; i < uImageCount; ++i) {
@@ -260,7 +256,7 @@ void CreateRenderTarget(VkDevice device, VkSwapchainKHR swapchain)
 	}
 }
 
-void CleanupRenderTarget()
+static void CleanupRenderTarget()
 {
 	for (uint32_t i = 0; i < RTL_NUMBER_OF(g_Frames); ++i) {
 		if (g_Frames[i].Fence) {
@@ -297,13 +293,17 @@ void CleanupRenderTarget()
 	}
 }
 
-void CleanupDeviceVulkan()
+static void CleanupDeviceVulkan()
 {
+	if (g_Device) {
+		vkDeviceWaitIdle(g_Device);
+	}
+
 	CleanupRenderTarget();
 
 	if (g_DescriptorPool) {
 		vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
-		g_DescriptorPool = NULL;
+		g_DescriptorPool = VK_NULL_HANDLE;
 	}
 	
 	// See #5 on GitHub (https://github.com/Halen84/ImGuiRDR2Hook/issues/5)
@@ -313,10 +313,10 @@ void CleanupDeviceVulkan()
 	//}
 
 	g_ImageExtent = {};
-	g_Device = NULL;
+	g_Device = VK_NULL_HANDLE;
 }
 
-bool DoesQueueSupportGraphic(VkQueue queue, VkQueue* pGraphicQueue)
+static bool DoesQueueSupportGraphic(VkQueue queue, VkQueue* pGraphicQueue)
 {
 	for (uint32_t i = 0; i < g_QueueFamilies.size(); ++i) {
 		const VkQueueFamilyProperties& family = g_QueueFamilies[i];
@@ -339,19 +339,29 @@ bool DoesQueueSupportGraphic(VkQueue queue, VkQueue* pGraphicQueue)
 	return false;
 }
 
-void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
+static void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
-	if (!g_Device || hooks::bShutdownRequested)
+	if (!g_Device || CImGuiHookManager::IsShutdownRequested())
 		return;
 
 	VkQueue graphicQueue = VK_NULL_HANDLE;
 	const bool queueSupportsGraphic = DoesQueueSupportGraphic(queue, &graphicQueue);
 
 	if (!ImGui::GetCurrentContext()) {
-		hooks::hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
+		CImGuiHookManager::SetGameWindow(FindWindowA("sgaWindow", "Red Dead Redemption 2"));
+
+		//if (g_ImageExtent.width == 0 || g_ImageExtent.height == 0) {
+		//	// We don't know the window size the first time so we just query the window handle.
+		//	RECT rect{};
+		//	GetClientRect(CImGuiHookManager::GetGameWindow(), &rect);
+		//
+		//	g_ImageExtent.width = rect.right - rect.left;
+		//	g_ImageExtent.height = rect.bottom - rect.top;
+		//}
+
 		ImGui::CreateContext();
-		ImGui_ImplWin32_Init(hooks::hWnd);
-		hooks::win32::Hook();
+		ImGui_ImplWin32_Init(CImGuiHookManager::GetGameWindow());
+		CImGuiHookManager::GetWin32().Hook();
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.IniFilename = io.LogFilename = NULL;
@@ -390,7 +400,8 @@ void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pP
 				// TODO: Maybe default to 1920x1080
 				info.renderArea.extent.width = 3840;
 				info.renderArea.extent.height = 2160;
-			} else {
+			}
+			else {
 				info.renderArea.extent = g_ImageExtent;
 			}
 
@@ -417,7 +428,7 @@ void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pP
 		}
 
 		ImGuiIO& io = ImGui::GetIO();
-		if (CMenu::bIsOpen) {
+		if (CImGuiMenu::ShouldDrawMouse()) {
 			io.WantCaptureMouse = true;
 			io.MouseDrawCursor = true;
 			io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
@@ -431,13 +442,10 @@ void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pP
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
-		CMenu::Draw();
+		CImGuiMenu::Render();
 		ImGui::Render();
-
-		// Record dear imgui primitives into command buffer
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), fd->CommandBuffer);
 
-		// Submit command buffer
 		vkCmdEndRenderPass(fd->CommandBuffer);
 		vkEndCommandBuffer(fd->CommandBuffer);
 
@@ -485,42 +493,45 @@ void hooks::vulkan::RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pP
 			info.waitSemaphoreCount = waitSemaphoresCount;
 			info.pWaitSemaphores = pPresentInfo->pWaitSemaphores;
 
-			info.signalSemaphoreCount = 1;
-			info.pSignalSemaphores = &fsd->ImageAcquiredSemaphore;
+			info.signalSemaphoreCount = waitSemaphoresCount;
+			info.pSignalSemaphores = pPresentInfo->pWaitSemaphores;
 
 			vkQueueSubmit(graphicQueue, 1, &info, fd->Fence);
 		}
 	}
 }
 
-std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t*)> oAcquireNextImageKHR;
-VkResult VKAPI_CALL hk_vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex)
+static std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t*)> oAcquireNextImageKHR;
+static VkResult VKAPI_CALL hk_vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex)
 {
 	g_Device = device;
 
 	return oAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex);
 }
 
-std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, const VkAcquireNextImageInfoKHR*, uint32_t*)> oAcquireNextImage2KHR;
-VkResult VKAPI_CALL hk_vkAcquireNextImage2KHR(VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo, uint32_t* pImageIndex)
+static std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, const VkAcquireNextImageInfoKHR*, uint32_t*)> oAcquireNextImage2KHR;
+static VkResult VKAPI_CALL hk_vkAcquireNextImage2KHR(VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo, uint32_t* pImageIndex)
 {
 	g_Device = device;
 
 	return oAcquireNextImage2KHR(device, pAcquireInfo, pImageIndex);
 }
 
-std::add_pointer_t<VkResult VKAPI_CALL(VkQueue, const VkPresentInfoKHR*)> oQueuePresentKHR;
-VkResult VKAPI_CALL hk_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
+static VkQueue m_queue;
+static const VkPresentInfoKHR* m_pPresentInfo;
+
+static std::add_pointer_t<VkResult VKAPI_CALL(VkQueue, const VkPresentInfoKHR*)> oQueuePresentKHR;
+static VkResult VKAPI_CALL hk_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
-	hooks::vulkan::m_queue = queue;
-	hooks::vulkan::m_pPresentInfo = pPresentInfo;
-	hooks::vulkan::RenderImGui_Vulkan(queue, pPresentInfo);
+	m_queue = queue;
+	m_pPresentInfo = pPresentInfo;
+	RenderImGui_Vulkan(queue, pPresentInfo);
 
 	return oQueuePresentKHR(queue, pPresentInfo);
 }
 
-std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, const VkSwapchainCreateInfoKHR*, const VkAllocationCallbacks*, VkSwapchainKHR*)> oCreateSwapchainKHR;
-VkResult VKAPI_CALL hk_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain)
+static std::add_pointer_t<VkResult VKAPI_CALL(VkDevice, const VkSwapchainCreateInfoKHR*, const VkAllocationCallbacks*, VkSwapchainKHR*)> oCreateSwapchainKHR;
+static VkResult VKAPI_CALL hk_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain)
 {
 	CleanupRenderTarget();
 	g_ImageExtent = pCreateInfo->imageExtent;
@@ -528,83 +539,66 @@ VkResult VKAPI_CALL hk_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCr
 	return oCreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
 }
 
+void CImGuiHookManager::sVK::Present()
+{
+	RenderImGui_Vulkan(m_queue, m_pPresentInfo);
+}
 
-namespace hooks {
-namespace vulkan {
-
-	void Hook()
-	{
-		if (GetModuleHandleA("vulkan-1.dll") == NULL) {
-			Log("[!] Vulkan: Cannot hook: vulkan-1.dll is not loaded.");
-			return;
-		}
-
-		if (!CreateDeviceVK()) {
-			Log("[!] Vulkan: CreateDeviceVK() failed.");
-			return;
-		}
-
-		MH_Initialize();
-
-		void* fpAcquireNextImageKHR  = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkAcquireNextImageKHR"));
-		void* fpAcquireNextImage2KHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkAcquireNextImage2KHR"));
-		void* fpQueuePresentKHR      = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkQueuePresentKHR"));
-		void* fpCreateSwapchainKHR   = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_FakeDevice, "vkCreateSwapchainKHR"));
-
-		// TODO: Calling vkDestroyDevice() anywhere will causes RDR2 to hang and or crash - Unfixable?
-		// Does this cause a memory leak then?
-		/*if (g_FakeDevice) {
-			vkDestroyDevice(g_FakeDevice, g_Allocator);
-			g_FakeDevice = NULL;
-		}*/
-
-		if (fpAcquireNextImageKHR) {
-			Log("[+] Vulkan: fpAcquireNextImageKHR:  0x%p", fpAcquireNextImageKHR);
-			Log("[+] Vulkan: fpAcquireNextImage2KHR: 0x%p", fpAcquireNextImage2KHR);
-			Log("[+] Vulkan: fpQueuePresentKHR:      0x%p", fpQueuePresentKHR);
-			Log("[+] Vulkan: fpCreateSwapchainKHR:   0x%p", fpCreateSwapchainKHR);
-
-			MH_STATUS aniStatus  = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImageKHR),  &hk_vkAcquireNextImageKHR,  reinterpret_cast<void**>(&oAcquireNextImageKHR));
-			MH_STATUS ani2Status = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImage2KHR), &hk_vkAcquireNextImage2KHR, reinterpret_cast<void**>(&oAcquireNextImage2KHR));
-			MH_STATUS qpStatus   = MH_CreateHook(reinterpret_cast<void**>(fpQueuePresentKHR),      &hk_vkQueuePresentKHR,      reinterpret_cast<void**>(&oQueuePresentKHR));
-			MH_STATUS csStatus   = MH_CreateHook(reinterpret_cast<void**>(fpCreateSwapchainKHR),   &hk_vkCreateSwapchainKHR,   reinterpret_cast<void**>(&oCreateSwapchainKHR));
-			Log("[+] Vulkan: MH_CreateHook() aniStatus:  %s", MHStatusToString(aniStatus));
-			Log("[+] Vulkan: MH_CreateHook() ani2Status: %s", MHStatusToString(ani2Status));
-			Log("[+] Vulkan: MH_CreateHook() qpStatus:   %s", MHStatusToString(qpStatus));
-			Log("[+] Vulkan: MH_CreateHook() csStatus:   %s", MHStatusToString(csStatus));
-
-			aniStatus  = MH_EnableHook(fpAcquireNextImageKHR);
-			ani2Status = MH_EnableHook(fpAcquireNextImage2KHR);
-			qpStatus   = MH_EnableHook(fpQueuePresentKHR);
-			csStatus   = MH_EnableHook(fpCreateSwapchainKHR);
-			Log("[+] Vulkan: MH_EnableHook() aniStatus:  %s", MHStatusToString(aniStatus));
-			Log("[+] Vulkan: MH_EnableHook() ani2Status: %s", MHStatusToString(ani2Status));
-			Log("[+] Vulkan: MH_EnableHook() qpStatus:   %s", MHStatusToString(qpStatus));
-			Log("[+] Vulkan: MH_EnableHook() csStatus:   %s", MHStatusToString(csStatus));
-		}
+void CImGuiHookManager::sVK::Hook()
+{
+	if (GetModuleHandleA("vulkan-1.dll") == NULL) {
+		Log("[!] Vulkan: vulkan-1.dll is not loaded.");
+		return;
 	}
 
-	void Unhook()
-	{
-		Log("[!] Vulkan: Unhooking...");
-
-		bShutdownRequested = true;
-
-		if (ImGui::GetCurrentContext())
-		{
-			if (ImGui::GetIO().BackendRendererUserData)
-				ImGui_ImplVulkan_Shutdown();
-
-			if (ImGui::GetIO().BackendPlatformUserData)
-				ImGui_ImplWin32_Shutdown();
-
-			ImGui::DestroyContext();
-		}
-		hooks::win32::Unhook();
-		MH_DisableHook(MH_ALL_HOOKS);
-
-		CleanupDeviceVulkan();
+	if (!CreateDeviceVK()) {
+		Log("[!] Vulkan: CreateDeviceVK() failed.");
+		return;
 	}
 
-} // namespace vulkan
-} // namespace hooks
+	MH_Initialize();
+
+	void* fpAcquireNextImageKHR  = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_TempDevice, "vkAcquireNextImageKHR"));
+	void* fpAcquireNextImage2KHR = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_TempDevice, "vkAcquireNextImage2KHR"));
+	void* fpQueuePresentKHR      = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_TempDevice, "vkQueuePresentKHR"));
+	void* fpCreateSwapchainKHR   = reinterpret_cast<void*>(vkGetDeviceProcAddr(g_TempDevice, "vkCreateSwapchainKHR"));
+
+	// TODO: Calling vkDestroyDevice() anywhere will causes RDR2 to hang and or crash - Unfixable?
+	// Does this cause a memory leak then?
+	/*if (g_TempDevice) {
+		vkDestroyDevice(g_TempDevice, g_Allocator);
+		g_TempDevice = NULL;
+	}*/
+
+	if (fpAcquireNextImageKHR)
+	{
+		MH_STATUS aniStatus  = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImageKHR),  &hk_vkAcquireNextImageKHR,  reinterpret_cast<void**>(&oAcquireNextImageKHR));
+		MH_STATUS ani2Status = MH_CreateHook(reinterpret_cast<void**>(fpAcquireNextImage2KHR), &hk_vkAcquireNextImage2KHR, reinterpret_cast<void**>(&oAcquireNextImage2KHR));
+		MH_STATUS qpStatus   = MH_CreateHook(reinterpret_cast<void**>(fpQueuePresentKHR),      &hk_vkQueuePresentKHR,      reinterpret_cast<void**>(&oQueuePresentKHR));
+		MH_STATUS csStatus   = MH_CreateHook(reinterpret_cast<void**>(fpCreateSwapchainKHR),   &hk_vkCreateSwapchainKHR,   reinterpret_cast<void**>(&oCreateSwapchainKHR));
+
+		aniStatus  = MH_EnableHook(fpAcquireNextImageKHR);
+		ani2Status = MH_EnableHook(fpAcquireNextImage2KHR);
+		qpStatus   = MH_EnableHook(fpQueuePresentKHR);
+		csStatus   = MH_EnableHook(fpCreateSwapchainKHR);
+	}
+}
+
+void CImGuiHookManager::sVK::Unhook()
+{
+	m_shutdownRequested = true;
+
+	if (ImGui::GetCurrentContext())
+	{
+		if (ImGui::GetIO().BackendRendererUserData)
+			ImGui_ImplVulkan_Shutdown();
+
+		if (ImGui::GetIO().BackendPlatformUserData)
+			ImGui_ImplWin32_Shutdown();
+
+		ImGui::DestroyContext();
+	}
+
+	MH_DisableHook(MH_ALL_HOOKS);
+	CleanupDeviceVulkan();
+}

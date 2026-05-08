@@ -1,9 +1,8 @@
-// Licensed under the MIT License - Halen84 (TuffyTown)
-
 #pragma once
 #include <Windows.h>
 #include <fstream>
 #include <sstream>
+#include <dxgi1_4.h>
 #include "MinHook.h"
 #include "../menu.h"
 #include "../kiero/kiero.h"
@@ -12,19 +11,64 @@
 #include "../imgui/imgui_impl_dx12.h"
 #include "../imgui/imgui_impl_vulkan.h"
 
-
-// Set whether the hooks should log debug information
 #define _LOGGING_ENABLED 0
 
+enum HookType : char
+{
+	eVULKAN,
+	eDX12,
+};
 
-namespace hooks {
-	inline bool bUsingDX12Hook = false;
-	inline bool bUsingVulkanHook = true;
+class CImGuiHookManager
+{
+public:
+	struct sVK
+	{
+		static void Present();
+		static void Hook();
+		static void Unhook();
+	};
 
-	inline HWND hWnd = NULL;
-	inline bool bShutdownRequested = false;
-	inline bool bImGuiInitialized = false;
-	
+	struct sDX12
+	{
+		static void Present();
+		static void Hook();
+		static void Unhook();
+	};
+
+	struct sWIN32
+	{
+		static void Hook();
+		static void Unhook();
+	};
+
+private:
+	static bool m_initialized;
+	static bool m_shutdownRequested;
+	static HookType m_hookType;
+	static HWND m_hWnd;
+	static sVK m_vulkanData;
+	static sDX12 m_dx12Data;
+	static sWIN32 m_win32Data;
+public:
+	static void Initialize();
+	static void Shutdown();
+
+	static sVK& GetVulkan() { return m_vulkanData; }
+	static sDX12& GetDX12() { return m_dx12Data; }
+	static sWIN32& GetWin32() { return m_win32Data; }
+
+	static bool IsInitialized() { return m_initialized; }
+	static bool IsShutdownRequested() { return m_shutdownRequested; }
+	static HookType GetHookType() { return m_hookType; }
+	static void SetHookType(HookType type) { m_hookType = type; }
+	static HWND GetGameWindow() { return m_hWnd; }
+	static void SetGameWindow(HWND hWnd) { m_hWnd = hWnd; }
+};
+
+
+namespace hooks
+{	
 	inline const char* KieroStatusEnumToString(kiero::Status::Enum status)
 	{
 		switch (status)
@@ -67,7 +111,7 @@ namespace hooks {
 inline void Log(const char* format, ...)
 {
 #if _LOGGING_ENABLED
-	std::ofstream file("ImGuiRDR2Hook.log", std::ios::app);
+	std::ofstream file(PROJECT_NAME ".log", std::ios::app);
 	std::ostringstream msg;
 	
 	va_list args;

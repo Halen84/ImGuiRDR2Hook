@@ -1,20 +1,18 @@
-// Licensed under the MIT License - Halen84 (TuffyTown)
-
 #pragma once
 #include "script.h"
 #include "imgui/imgui.h"
 
-inline void DisableAllControlActionsThisFrame()
+class CImGuiMenu
 {
-	int controlIndex = PAD::IS_USING_KEYBOARD_AND_MOUSE(0) ? 0 : 2;
-	PAD::DISABLE_ALL_CONTROL_ACTIONS(controlIndex);
-}
-
-class CMenu
-{
-public:
-	static bool bIsOpen;
+private:
+	static bool sm_bMenuOpen;
+	static bool sm_bDrawMouse;
 
 public:
-	static void Draw();
+	static void Render();
+
+	static inline bool GetIsOpen() { return sm_bMenuOpen; }
+	static inline void SetIsOpen(bool open) { sm_bMenuOpen = open; }
+	static inline bool ShouldDrawMouse() { return sm_bDrawMouse; }
+	static inline void SetShouldDrawMouse(bool draw) { sm_bDrawMouse = draw; }
 };

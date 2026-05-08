@@ -1,16 +1,15 @@
 // Code modified from https://github.com/Sh0ckFR/Universal-Dear-ImGui-Hook/blob/master/d3d12hook.cpp
 // Big thanks to Sh0ckFR
 
-#include "dx12.h"
-#include "win32.h"
+#include "Manager.h"
 #include <d3d12.h>
 #pragma comment(lib, "libMinHook.x64.lib")
 
-ID3D12Device* g_d3d12Device = nullptr;
-ID3D12DescriptorHeap* g_d3d12DescriptorHeapBackBuffers = nullptr;
-ID3D12DescriptorHeap* g_d3d12DescriptorHeapImGuiRender = nullptr;
-ID3D12GraphicsCommandList* g_d3d12CommandList = nullptr;
-ID3D12CommandQueue* g_d3d12CommandQueue = nullptr;
+static ID3D12Device* g_d3d12Device = nullptr;
+static ID3D12DescriptorHeap* g_d3d12DescriptorHeapBackBuffers = nullptr;
+static ID3D12DescriptorHeap* g_d3d12DescriptorHeapImGuiRender = nullptr;
+static ID3D12GraphicsCommandList* g_d3d12CommandList = nullptr;
+static ID3D12CommandQueue* g_d3d12CommandQueue = nullptr;
 
 // string form of the IID for the ID3D12Device interface
 struct __declspec(uuid("189819F1-1DB6-4B57-BE54-1821339B85F7")) ID3D12Device;
@@ -22,23 +21,29 @@ struct FrameContext
 	D3D12_CPU_DESCRIPTOR_HANDLE sRenderTargetDescriptor{};
 };
 
-UINT uBuffersCounts = 0;
-FrameContext* pFrameContext;
+static UINT uBuffersCounts = 0;
+static FrameContext* pFrameContext;
+
+static IDXGISwapChain3* m_pSwapChain;		
+static UINT m_SyncInterval;
+static UINT m_Flags;
 
 typedef long(__fastcall* Present_t) (IDXGISwapChain*, UINT, UINT);
-Present_t og_Present{};
-long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
+static Present_t og_Present{};
+long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
 {
+	static bool s_initialized;
+
 	m_pSwapChain = pSwapChain;
 	m_SyncInterval = SyncInterval;
 	m_Flags = Flags;
 
-	if (!hooks::bImGuiInitialized)
+	if (!s_initialized)
 	{
 		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device), (void**)&g_d3d12Device)))
 		{
 			Log("[+] DX12: winerror.h SUCCEEDED() - Pass");
-			hooks::hWnd = FindWindowA("sgaWindow", "Red Dead Redemption 2");
+			CImGuiHookManager::SetGameWindow(FindWindowA("sgaWindow", "Red Dead Redemption 2"));
 
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
@@ -57,8 +62,8 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 			DXGI_SWAP_CHAIN_DESC sdesc;
 			pSwapChain->GetDesc(&sdesc);
 			sdesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-			sdesc.OutputWindow = hooks::hWnd;
-			sdesc.Windowed = ((GetWindowLongPtr(hooks::hWnd, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+			sdesc.OutputWindow = CImGuiHookManager::GetGameWindow();
+			sdesc.Windowed = ((GetWindowLongPtr(CImGuiHookManager::GetGameWindow(), GWL_STYLE) & WS_POPUP) != 0) ? false : true;
 
 			uBuffersCounts = sdesc.BufferCount;
 			pFrameContext = new FrameContext[uBuffersCounts];
@@ -115,7 +120,7 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 				rtvHandle.ptr += rtvDescriptorSize;
 			}
 
-			ImGui_ImplWin32_Init(hooks::hWnd);
+			ImGui_ImplWin32_Init(CImGuiHookManager::GetGameWindow());
 			ImGui_ImplDX12_Init
 			(
 				g_d3d12Device,
@@ -126,25 +131,24 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 				g_d3d12DescriptorHeapImGuiRender->GetGPUDescriptorHandleForHeapStart()
 			);
 			ImGui_ImplDX12_CreateDeviceObjects();
-
-			hooks::win32::Hook();
+			CImGuiHookManager::GetWin32().Hook();
 		}
 		else
 		{
 			Log("[!] DX12: winerror.h SUCCEEDED() - FAILED");
 		}
 
-		hooks::bImGuiInitialized = true;
+		s_initialized = true;
 	}
 
-	if (!hooks::bShutdownRequested)
+	if (!CImGuiHookManager::IsShutdownRequested())
 	{
 		if (g_d3d12CommandQueue == nullptr) {
 			return og_Present(pSwapChain, SyncInterval, Flags);
 		}
 
 		ImGuiIO& io = ImGui::GetIO();
-		if (CMenu::bIsOpen) {
+		if (CImGuiMenu::ShouldDrawMouse()) {
 			io.WantCaptureMouse = true;
 			io.MouseDrawCursor = true;
 			io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
@@ -158,8 +162,7 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
-
-		CMenu::Draw();
+		CImGuiMenu::Render();
 
 		FrameContext& currentFrameContext = pFrameContext[pSwapChain->GetCurrentBackBufferIndex()];
 		currentFrameContext.pCommandAllocator->Reset();
@@ -193,7 +196,7 @@ long __fastcall hooks::dx12::hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncIn
 }
 
 typedef void(*ExecuteCommandLists_t) (ID3D12CommandQueue*, UINT, ID3D12CommandList*);
-ExecuteCommandLists_t og_ExecuteCommandLists{};
+static ExecuteCommandLists_t og_ExecuteCommandLists{};
 void hk_ExecuteCommandLists(ID3D12CommandQueue* pQueue, UINT NumCommandLists, ID3D12CommandList* ppCommandLists)
 {
 	if (!g_d3d12CommandQueue) {
@@ -203,62 +206,58 @@ void hk_ExecuteCommandLists(ID3D12CommandQueue* pQueue, UINT NumCommandLists, ID
 	og_ExecuteCommandLists(pQueue, NumCommandLists, ppCommandLists);
 }
 
+void CImGuiHookManager::sDX12::Present()
+{
+	hk_Present(m_pSwapChain, m_SyncInterval, m_Flags);
+}
 
-namespace hooks {
-namespace dx12 {
-
-	void Hook()
-	{
-		if (GetModuleHandleA("d3d12.dll") == NULL) {
-			Log("[!] DX12: Cannot hook: d3d12.dll is not loaded.");
-			return;
-		}
-
-		kiero::Status::Enum initStatus = kiero::init(kiero::RenderType::D3D12);
-		kiero::Status::Enum bindStatus;
-		if (initStatus == kiero::Status::Success)
-		{
-			Log("[+] DX12: kiero::init(D3D12) - Success");
-
-			bindStatus = kiero::bind(kiero::D3D12MT::ExecuteCommandLists, (void**)&og_ExecuteCommandLists, hk_ExecuteCommandLists);
-			Log("[+] DX12: bind (ExecuteCommandLists) - %s", KieroStatusEnumToString(bindStatus));
-			bindStatus = kiero::bind(kiero::D3D12MT::Present, (void**)&og_Present, hk_Present);
-			Log("[+] DX12: bind (Present) - %s", KieroStatusEnumToString(bindStatus));
-
-			Log("[+] DX12: kiero::bind() functions completed");
-		}
-		else
-		{
-			Log("[!] DX12: kiero::init(D3D12) - FAILED - %s", KieroStatusEnumToString(initStatus));
-		}
+void CImGuiHookManager::sDX12::Hook()
+{
+	if (GetModuleHandleA("d3d12.dll") == NULL) {
+		Log("[!] DX12: d3d12.dll is not loaded.");
+		return;
 	}
 
-	void Unhook()
+	kiero::Status::Enum initStatus = kiero::init(kiero::RenderType::D3D12);
+	kiero::Status::Enum bindStatus;
+	if (initStatus == kiero::Status::Success)
 	{
-		Log("[!] DX12: Unhooking...");
+		Log("[+] DX12: kiero::init(D3D12) - Success");
 
-		bShutdownRequested = true;
+		bindStatus = kiero::bind(kiero::D3D12MT::ExecuteCommandLists, (void**)&og_ExecuteCommandLists, hk_ExecuteCommandLists);
+		Log("[+] DX12: bind (ExecuteCommandLists) - %s", hooks::KieroStatusEnumToString(bindStatus));
+		bindStatus = kiero::bind(kiero::D3D12MT::Present, (void**)&og_Present, &hk_Present);
+		Log("[+] DX12: bind (Present) - %s", hooks::KieroStatusEnumToString(bindStatus));
 
-		if (g_d3d12Device) g_d3d12Device->Release();
-		if (g_d3d12DescriptorHeapBackBuffers) g_d3d12DescriptorHeapBackBuffers->Release();
-		if (g_d3d12DescriptorHeapImGuiRender) g_d3d12DescriptorHeapImGuiRender->Release();
-		if (g_d3d12CommandList) g_d3d12CommandList->Release();
-		if (g_d3d12CommandQueue) g_d3d12CommandQueue->Release();
+		Log("[+] DX12: kiero::bind() functions completed");
+	}
+	else
+	{
+		Log("[!] DX12: kiero::init(D3D12) - FAILED - %s", hooks::KieroStatusEnumToString(initStatus));
+	}
+}
 
-		kiero::shutdown();
-		if (ImGui::GetCurrentContext())
-		{
-			if (ImGui::GetIO().BackendRendererUserData)
-				ImGui_ImplDX12_Shutdown();
+void CImGuiHookManager::sDX12::Unhook()
+{
+	m_shutdownRequested = true;
 
-			if (ImGui::GetIO().BackendPlatformUserData)
-				ImGui_ImplWin32_Shutdown();
+	if (g_d3d12Device) g_d3d12Device->Release();
+	if (g_d3d12DescriptorHeapBackBuffers) g_d3d12DescriptorHeapBackBuffers->Release();
+	if (g_d3d12DescriptorHeapImGuiRender) g_d3d12DescriptorHeapImGuiRender->Release();
+	if (g_d3d12CommandList) g_d3d12CommandList->Release();
+	if (g_d3d12CommandQueue) g_d3d12CommandQueue->Release();
 
-			ImGui::DestroyContext();
-		}
-		hooks::win32::Unhook();
+	kiero::shutdown();
+	if (ImGui::GetCurrentContext())
+	{
+		if (ImGui::GetIO().BackendRendererUserData)
+			ImGui_ImplDX12_Shutdown();
+
+		if (ImGui::GetIO().BackendPlatformUserData)
+			ImGui_ImplWin32_Shutdown();
+
+		ImGui::DestroyContext();
 	}
 
-} // namespace dx12
-} // namespace hooks
-
+	MH_DisableHook(MH_ALL_HOOKS);
+}

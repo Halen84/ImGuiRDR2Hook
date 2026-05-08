@@ -14,5 +14,5 @@
 
 void ScriptMain();
 
-// NOTE: Use this function instead of Scripthook's WAIT (scriptWait) function to prevent a crash. 
+// NOTE: If you need to yield within ImGui, use this function instead of Scripthook's WAIT (scriptWait) function to prevent a crash. 
 void WaitAndRender(unsigned ms);

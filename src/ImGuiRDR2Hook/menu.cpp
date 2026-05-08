@@ -1,38 +1,23 @@
-// Licensed under the MIT License - Halen84 (TuffyTown)
-
 #include "menu.h"
 
-bool CMenu::bIsOpen = false;
+bool CImGuiMenu::sm_bMenuOpen = true;
+bool CImGuiMenu::sm_bDrawMouse = true;
 
-char arBuffer[256]{};
-float fFloatValue = 0.0f;
+char s_StringBuffer[256] = {};
+float s_fFloatValue = 0.0f;
 
-void CMenu::Draw()
+void CImGuiMenu::Render()
 {
-	if (bIsOpen)
+	if (GetIsOpen())
 	{
-		// ScriptHook's IsKey... functions don't work while a ImGui window is open (see #4 on GitHub)
-		// If you want to change which key opens and closes the menu, also see script.cpp
-		if (ImGui::IsKeyReleased(ImGuiKey_F5))
-		{
-			bIsOpen ^= true;
-		}
-		
-		// Comment this out if you do NOT want in-game controls
-		// to be disabled while the ImGui menu is open.
-		DisableAllControlActionsThisFrame();
-
 		ImGui::SetNextWindowSize({250, 200}, ImGuiCond_Once);
-		ImGui::Begin("ImGui Menu", &bIsOpen, bIsOpen ? 0 : ImGuiWindowFlags_NoMouseInputs);
-
-		ImGui::Text("Hello, world %d", 123);
-		if (ImGui::Button("Button"))
-		{ 
-			// Do stuff
+		if (ImGui::Begin("ImGui Menu", &sm_bMenuOpen, sm_bMenuOpen ? 0 : ImGuiWindowFlags_NoMouseInputs))
+		{
+			ImGui::Text("Hello, world %d", 123);
+			ImGui::Button("Button");
+			ImGui::InputText("string", s_StringBuffer, IM_ARRAYSIZE(s_StringBuffer));
+			ImGui::SliderFloat("float", &s_fFloatValue, 0.0f, 1.0f);
 		}
-		ImGui::InputText("string", arBuffer, IM_ARRAYSIZE(arBuffer));
-		ImGui::SliderFloat("float", &fFloatValue, 0.0f, 1.0f);
-
 		ImGui::End();
 	}
 }

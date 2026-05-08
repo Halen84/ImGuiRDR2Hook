@@ -32,14 +32,17 @@
     <ClCompile Include="imgui\imgui_impl_vulkan.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\win32.cpp">
-      <Filter>hooks</Filter>
+    <ClCompile Include="Hook\DX12.cpp">
+      <Filter>ImGuiHook</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\dx12.cpp">
-      <Filter>hooks</Filter>
+    <ClCompile Include="Hook\Manager.cpp">
+      <Filter>ImGuiHook</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\vulkan.cpp">
-      <Filter>hooks</Filter>
+    <ClCompile Include="Hook\Vulkan.cpp">
+      <Filter>ImGuiHook</Filter>
+    </ClCompile>
+    <ClCompile Include="Hook\Win32.cpp">
+      <Filter>ImGuiHook</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,17 +91,8 @@
     <ClInclude Include="imgui\imgui_impl_vulkan.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="hooks\win32.h">
-      <Filter>hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="hooks\dx12.h">
-      <Filter>hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="hooks\include.h">
-      <Filter>hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="hooks\vulkan.h">
-      <Filter>hooks</Filter>
+    <ClInclude Include="Hook\Manager.h">
+      <Filter>ImGuiHook</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -111,7 +105,7 @@
     <Filter Include="kiero">
       <UniqueIdentifier>{834d234e-b476-4394-8b4d-edf631ffc5b1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="hooks">
+    <Filter Include="ImGuiHook">
       <UniqueIdentifier>{05572b8e-f2f6-4571-a9a3-6b2c9995d4fa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

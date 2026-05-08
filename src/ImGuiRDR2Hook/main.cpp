@@ -1,11 +1,7 @@
-// Licensed under the MIT License - Halen84 (TuffyTown)
-
 #include "..\..\inc\main.h"
 #include "script.h"
 #include "keyboard.h"
-#include "hooks/win32.h"
-#include "hooks/dx12.h"
-#include "hooks/vulkan.h"
+#include "Hook/Manager.h"
 #include <filesystem>
 
 #if !defined PROJECT_NAME
@@ -15,9 +11,9 @@
 //
 // NOTICE:
 // 
-// - If you do not want to read from system.xml, and would rather read from our config, the set __READ_FROM_OUR_CONFIG to TRUE
-// - If you do not want to read from our config file, then set __FALLBACK_TO_OUR_CONFIG to FALSE
-// - If you do not want to read from either, set then set __FALLBACK_TO_OUR_CONFIG to FALSE and set bHasConfigBeenRead to TRUE
+// - If you do not want to read from system.xml, and would rather read from the config, the set __READ_FROM_MY_CONFIG to TRUE
+// - If you do not want to read from the config file, then set __FALLBACK_TO_MY_CONFIG to FALSE
+// - If you do not want to read from either, set then set __FALLBACK_TO_MY_CONFIG to FALSE and set s_bHasConfigBeenRead to TRUE
 //     - Be sure to set hooks::bUsingVulkanHook and hooks::bUsingDX12Hook accordingly
 // 
 // The config file is not required, but you will have to hardcode those booleans.
@@ -25,29 +21,20 @@
 //
 
 
-// Our config file is --> PROJECT_NAME "_config.txt"
+// The config file is --> PROJECT_NAME "_config.txt"
 // e.g. ImGuiRDR2Hook_config.txt
-#define __FALLBACK_TO_OUR_CONFIG 1
-#define __READ_FROM_OUR_CONFIG 0
+#define __FALLBACK_TO_MY_CONFIG 1
+#define __READ_FROM_MY_CONFIG 0
+#define __COMPILE_IMGUI 1
 
 
-// Just to make sure some functions aren't called more than once
-bool bVulkanInitialized = false;
-bool bDX12Initialized = false;
-bool bHasConfigBeenRead = false;
-
-
-void ReadOurConfigFile() noexcept
+static bool s_bHasConfigBeenRead = false;
+static void ReadMyConfigFile()
 {
-	// Default to use Vulkan API (these will be changed if this function passes)
-	hooks::bUsingVulkanHook = true;
-	hooks::bUsingDX12Hook = false;
-
-	// File doesn't exist, abort
 	if (!std::filesystem::exists("./" PROJECT_NAME "_config.txt"))
 	{
 		Log("[!] Config: " PROJECT_NAME "_config.txt does not exist. Using Vulkan API.");
-		bHasConfigBeenRead = true;
+		s_bHasConfigBeenRead = true;
 		return;
 	}
 
@@ -61,57 +48,28 @@ void ReadOurConfigFile() noexcept
 			std::string field = line.substr(0, idx);
 			std::string value = line.substr(idx + 1);
 
-			if (field == "bUseDirectX12")
+			if (field == "HookType")
 			{
-				if (value != "true")
-				{
-					hooks::bUsingDX12Hook = false;
+				if (value == "Vulkan") {
+					CImGuiHookManager::SetHookType(eVULKAN);
 				}
-				else
-				{
-					hooks::bUsingDX12Hook = true;
-				}
-			}
-			else if (field == "bUseVulkan")
-			{
-				if (value != "true")
-				{
-					hooks::bUsingVulkanHook = false;
-				}
-				else
-				{
-					hooks::bUsingVulkanHook = true;
+				else if (value == "DX12") {
+					CImGuiHookManager::SetHookType(eDX12);
 				}
 			}
 		}
 	}
 
-	// Default to use Vulkan API
-	if (hooks::bUsingDX12Hook == false && hooks::bUsingVulkanHook == false)
-	{
-		hooks::bUsingVulkanHook = true;
-		Log("[!] Config: bUsingDX12Hook & bUsingVulkanHook were both FALSE. Using Vulkan API.");
-	}
-	else if (hooks::bUsingDX12Hook == true && hooks::bUsingVulkanHook == true)
-	{
-		hooks::bUsingDX12Hook = false;
-		Log("[!] Config: bUsingDX12Hook & bUsingVulkanHook were both TRUE. Using Vulkan API.");
-	}
-
-	bHasConfigBeenRead = true;
+	s_bHasConfigBeenRead = true;
 	file.close();
 }
 
 
-void ReadSystemXmlFile(bool bFallbackToOurConfig) noexcept
+static void ReadSystemXmlFile(bool bFallbackToMyConfig)
 {
 	char* userprofile;
 	size_t length;
 	errno_t didFail = _dupenv_s(&userprofile, &length, "USERPROFILE"); // std::getenv
-
-	// Default to use Vulkan API
-	hooks::bUsingVulkanHook = true;
-	hooks::bUsingDX12Hook = false;
 
 	if (!didFail)
 	{
@@ -130,26 +88,24 @@ void ReadSystemXmlFile(bool bFallbackToOurConfig) noexcept
 
 					if (strcmp(cstr, "    <API>kSettingAPI_Vulkan</API>") == 0)
 					{
-						hooks::bUsingVulkanHook = true;
-						hooks::bUsingDX12Hook = false;
+						CImGuiHookManager::SetHookType(eVULKAN);
 					}
 					else if (strcmp(cstr, "    <API>kSettingAPI_DX12</API>") == 0)
 					{
-						hooks::bUsingVulkanHook = false;
-						hooks::bUsingDX12Hook = true;
+						CImGuiHookManager::SetHookType(eDX12);
 					}
 
-					bHasConfigBeenRead = true;
+					s_bHasConfigBeenRead = true;
 					break;
 				}
 			}
 		}
 		else
 		{
-			Log("[!] Config: Failed to find system.xml from %s. bFallbackToOurConfig: %d", settings.generic_string().c_str(), bFallbackToOurConfig);
-			if (bFallbackToOurConfig)
+			Log("[!] Config: Failed to find system.xml from %s. bFallbackToMyConfig: %d", settings.generic_string().c_str(), bFallbackToMyConfig);
+			if (bFallbackToMyConfig)
 			{
-				ReadOurConfigFile();
+				ReadMyConfigFile();
 			}
 		}
 
@@ -157,10 +113,10 @@ void ReadSystemXmlFile(bool bFallbackToOurConfig) noexcept
 	}
 	else
 	{
-		Log("[!] Config: _dupenv_s() failed. bFallbackToOurConfig: %d", bFallbackToOurConfig);
-		if (bFallbackToOurConfig)
+		Log("[!] Config: _dupenv_s() failed. bFallbackToMyConfig: %d", bFallbackToMyConfig);
+		if (bFallbackToMyConfig)
 		{
-			ReadOurConfigFile();
+			ReadMyConfigFile();
 		}
 	}
 }
@@ -171,47 +127,32 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 	switch (reason)
 	{
 	case DLL_PROCESS_ATTACH:
-		if (!bHasConfigBeenRead)
+		if (!s_bHasConfigBeenRead)
 		{
-#if !__READ_FROM_OUR_CONFIG
-			ReadSystemXmlFile(__FALLBACK_TO_OUR_CONFIG);
-#else
-			ReadOurConfigFile();
-#endif
+#if __COMPILE_IMGUI
+
+			if (!s_bHasConfigBeenRead)
+			{
+				#if !__READ_FROM_MY_CONFIG
+					ReadSystemXmlFile(__FALLBACK_TO_MY_CONFIG);
+				#else
+					ReadMyConfigFile();
+				#endif //__READ_FROM_MY_CONFIG
+			}
 		}
 
-		if (!bVulkanInitialized && hooks::bUsingVulkanHook)
-		{
-			hooks::vulkan::Hook();
-			bVulkanInitialized = true;
-		}
-
-		if (!bDX12Initialized && hooks::bUsingDX12Hook)
-		{
-			hooks::dx12::Hook();
-			bDX12Initialized = true;
-		}
-
-		// hooks::win32::Hook() is automatically called
+		CImGuiHookManager::Initialize();
+#endif //__COMPILE_IMGUI
 
 		scriptRegister(hInstance, ScriptMain);
 		keyboardHandlerRegister(OnKeyboardMessage);
 		break;
 	case DLL_PROCESS_DETACH:
-		bVulkanInitialized = false;
-		bDX12Initialized = false;
-		bHasConfigBeenRead = false;
+#if __COMPILE_IMGUI
+		s_bHasConfigBeenRead = false;
+		CImGuiHookManager::Shutdown();
 
-		if (hooks::bUsingDX12Hook)
-		{
-			hooks::dx12::Unhook();
-		}
-		else if (hooks::bUsingVulkanHook)
-		{
-			hooks::vulkan::Unhook();
-		}
-
-		// hooks::win32::Unhook() is automatically called
+#endif //__COMPILE_IMGUI
 
 		scriptUnregister(hInstance);
 		keyboardHandlerUnregister(OnKeyboardMessage);
