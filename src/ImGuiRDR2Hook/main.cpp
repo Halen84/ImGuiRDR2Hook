@@ -141,7 +141,32 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 			}
 		}
 
-		CImGuiHookManager::Initialize();
+		// After some Windows (security?) update in May 2026 (?), something changed that causes the game to fail to load.
+		// Using DebugView sysinternals I was seeing an error like "Cannot call CreateDXGIFactory from DllMain".
+		// Yielding until the game window is found before doing any hooking seems to do the trick.
+		// Presumably this is what I should've been doing in the first place.
+		DisableThreadLibraryCalls(hInstance);
+		CloseHandle(CreateThread(nullptr, 0,(LPTHREAD_START_ROUTINE)[](LPVOID) -> DWORD
+		{
+			constexpr u64 TIMEOUT_MS = 15 * 1000; // 15 seconds
+			const u64 start = GetTickCount64();
+
+			while (FindWindowA(NULL, "Red Dead Redemption 2") == NULL)
+			{
+				// Timeout failsafe in case for whatever reason something goes wrong
+				if (GetTickCount64() - start >= TIMEOUT_MS) {
+					return 0;
+				}
+
+				Sleep(100);
+			}
+
+			CImGuiHookManager::Initialize();
+
+			return 0;
+		},
+		nullptr, 0, nullptr));
+
 #endif //__COMPILE_IMGUI
 
 		scriptRegister(hInstance, ScriptMain);
