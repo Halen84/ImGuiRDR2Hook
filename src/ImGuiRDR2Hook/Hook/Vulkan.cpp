@@ -348,7 +348,7 @@ static void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentIn
 	const bool queueSupportsGraphic = DoesQueueSupportGraphic(queue, &graphicQueue);
 
 	if (!ImGui::GetCurrentContext()) {
-		CImGuiHookManager::SetGameWindow(FindWindowA("sgaWindow", "Red Dead Redemption 2"));
+		CImGuiHookManager::SetGameWindow(FindWindowA(NULL, "Red Dead Redemption 2"));
 
 		//if (g_ImageExtent.width == 0 || g_ImageExtent.height == 0) {
 		//	// We don't know the window size the first time so we just query the window handle.
@@ -361,7 +361,7 @@ static void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentIn
 
 		ImGui::CreateContext();
 		ImGui_ImplWin32_Init(CImGuiHookManager::GetGameWindow());
-		CImGuiHookManager::GetWin32().Hook();
+		CImGuiHookManager::sWIN32::Hook();
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.IniFilename = io.LogFilename = NULL;
@@ -418,17 +418,17 @@ static void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentIn
 			init_info.Queue = graphicQueue;
 			init_info.PipelineCache = g_PipelineCache;
 			init_info.DescriptorPool = g_DescriptorPool;
-			init_info.Subpass = 0;
 			init_info.MinImageCount = g_MinImageCount;
 			init_info.ImageCount = g_MinImageCount;
-			init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 			init_info.Allocator = g_Allocator;
-			ImGui_ImplVulkan_Init(&init_info, g_RenderPass);
-			ImGui_ImplVulkan_CreateFontsTexture(fd->CommandBuffer);
+			init_info.PipelineInfoMain.RenderPass = g_RenderPass;
+			init_info.PipelineInfoMain.Subpass = 0;
+			init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+			ImGui_ImplVulkan_Init(&init_info);
 		}
 
 		ImGuiIO& io = ImGui::GetIO();
-		if (CImGuiMenu::ShouldDrawMouse()) {
+		if (CImGuiHookManager::ShouldDrawMouse()) {
 			io.WantCaptureMouse = true;
 			io.MouseDrawCursor = true;
 			io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
@@ -442,7 +442,7 @@ static void RenderImGui_Vulkan(VkQueue queue, const VkPresentInfoKHR* pPresentIn
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
-		CImGuiMenu::Render();
+		CImGuiHookManager::RunCallbacks();
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), fd->CommandBuffer);
 
@@ -547,7 +547,9 @@ void CImGuiHookManager::sVK::Present()
 void CImGuiHookManager::sVK::Hook()
 {
 	if (GetModuleHandleA("vulkan-1.dll") == NULL) {
-		Log("[!] Vulkan: vulkan-1.dll is not loaded.");
+		Log("[!] Vulkan: vulkan-1.dll is not loaded, attempting to switch to DX12.");
+		SetGraphicsAPI(eDX12);
+		sDX12::Hook();
 		return;
 	}
 

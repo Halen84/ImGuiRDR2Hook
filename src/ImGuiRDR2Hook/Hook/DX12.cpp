@@ -43,7 +43,7 @@ long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT 
 		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device), (void**)&g_d3d12Device)))
 		{
 			Log("[+] DX12: winerror.h SUCCEEDED() - Pass");
-			CImGuiHookManager::SetGameWindow(FindWindowA("sgaWindow", "Red Dead Redemption 2"));
+			CImGuiHookManager::SetGameWindow(FindWindowA(NULL, "Red Dead Redemption 2"));
 
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
@@ -131,7 +131,7 @@ long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT 
 				g_d3d12DescriptorHeapImGuiRender->GetGPUDescriptorHandleForHeapStart()
 			);
 			ImGui_ImplDX12_CreateDeviceObjects();
-			CImGuiHookManager::GetWin32().Hook();
+			CImGuiHookManager::sWIN32::Hook();
 		}
 		else
 		{
@@ -148,7 +148,7 @@ long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT 
 		}
 
 		ImGuiIO& io = ImGui::GetIO();
-		if (CImGuiMenu::ShouldDrawMouse()) {
+		if (CImGuiHookManager::ShouldDrawMouse()) {
 			io.WantCaptureMouse = true;
 			io.MouseDrawCursor = true;
 			io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
@@ -162,7 +162,7 @@ long __fastcall hk_Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT 
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
-		CImGuiMenu::Render();
+		CImGuiHookManager::RunCallbacks();
 
 		FrameContext& currentFrameContext = pFrameContext[pSwapChain->GetCurrentBackBufferIndex()];
 		currentFrameContext.pCommandAllocator->Reset();

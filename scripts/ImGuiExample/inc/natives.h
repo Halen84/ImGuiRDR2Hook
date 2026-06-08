@@ -5,11 +5,11 @@
 
 #ifndef NATIVE_DECL
 #if defined(_MSC_VER)
-#define NATIVE_DECL __forceinline
+	#define NATIVE_DECL __forceinline
 #elif defined(__clang__) || defined(__GNUC__)
-#define NATIVE_DECL __attribute__((always_inline)) inline
+	#define NATIVE_DECL __attribute__((always_inline)) inline
 #else
-#define NATIVE_DECL inline
+	#define NATIVE_DECL inline
 #endif
 #endif
 
@@ -7399,7 +7399,7 @@ namespace PED
 	NATIVE_DECL int CAN_PED_SEE_PED_CACHED(Ped ped, Ped targetPed, BOOL p2) { return invoke<int>(0x9D9473CB82D83A30, ped, targetPed, p2); } // 0x9D9473CB82D83A30 b1207
 	// Returns true if `listener` can hear `source`.
 	// If `includeNoiseBoost` is true, the source's noise radius is applied (easier to hear).
-	// It treats the source as louderóits current noise expands the effective hearing range (by subtracting noiseRadius≤ from dist≤), while false uses the baseline distance-only check (stealth).
+	// It treats the source as louder‚Äîits current noise expands the effective hearing range (by subtracting noiseRadius¬≤ from dist¬≤), while false uses the baseline distance-only check (stealth).
 	NATIVE_DECL BOOL _CAN_PED_HEAR_TARGET_PED(Ped source, Ped listener, BOOL includeNoiseBoost) { return invoke<BOOL>(0x0EA9EACBA3B01601, source, listener, includeNoiseBoost); } // 0x0EA9EACBA3B01601 b1207
 	// no bone = -1
 	NATIVE_DECL int GET_PED_BONE_INDEX(Ped ped, int boneId) { return invoke<int>(0x3F428D08BE5AAE31, ped, boneId); } // 0x3F428D08BE5AAE31 0x259C6BA2 b1207
@@ -8039,7 +8039,7 @@ namespace PED
 	// wearableState: https://github.com/Jump-On-Studios/RedM-jo_libs/blob/main/jo_libs/modules/component/g_client.lua#L138
 	NATIVE_DECL void _UPDATE_SHOP_ITEM_WEARABLE_STATE(Ped ped, Hash componentHash, Hash wearableState, int p3, BOOL isMp, int p5) { invoke<Void>(0x66B957AAC2EAAEAB, ped, componentHash, wearableState, p3, isMp, p5); } // 0x66B957AAC2EAAEAB b1207
 	// Returns 0 if index invalid/unresolvable; else the shop component hash.
-	// resolveSelection: true -> run the resolver (rebuild from ped meta/outfit - MP ìnet shopî style); false -> use cached entry only (singleplayer - offline).
+	// resolveSelection: true -> run the resolver (rebuild from ped meta/outfit - MP ‚Äúnet shop‚Äù style); false -> use cached entry only (singleplayer - offline).
 	// outStatusFlag: Set to 1 if the entry's internal status byte != 0.
 	// outWearableState: See _UPDATE_SHOP_ITEM_WEARABLE_STATE
 	NATIVE_DECL Hash _GET_SHOP_ITEM_COMPONENT_AT_INDEX(Ped ped, int index, BOOL resolveSelection, BOOL* outStatusFlag, Hash* outWearableState) { return invoke<Hash>(0x77BA37622E22023B, ped, index, resolveSelection, outStatusFlag, outWearableState); } // 0x77BA37622E22023B b1207
@@ -9853,7 +9853,7 @@ namespace TASK
 	// flags: 0 = HANDS_UP_NOTHING; 1 = HANDS_UP_STRAIGHT_TO_LOOP
 	NATIVE_DECL void TASK_HANDS_UP(Ped ped, int duration, Ped facingPed, int timeToFacePed, int flags) { invoke<Void>(0xF2EAB31979A7F910, ped, duration, facingPed, timeToFacePed, flags); } // 0xF2EAB31979A7F910 0x8DCC19C5 b1207
 	NATIVE_DECL void TASK_KNOCKED_OUT(Ped ped, float p1, BOOL permanently) { invoke<Void>(0xF90427F00A495A28, ped, p1, permanently); } // 0xF90427F00A495A28 b1207
-	// koTimeOffset (seconds): offset applied to the knockout timerópositive delays recovery (longer KO), negative brings recovery sooner, 0.0 initializes with no extension (immediate baseline).
+	// koTimeOffset (seconds): offset applied to the knockout timer‚Äîpositive delays recovery (longer KO), negative brings recovery sooner, 0.0 initializes with no extension (immediate baseline).
 	// flags (bitmask): 1 = default variant (forwarded to the KO task ctor; R* commonly uses 1), 2 = sets an unk internal synced toggle for this task, 4 = sets another unk internal synced toggle.
 	NATIVE_DECL void TASK_KNOCKED_OUT_AND_HOGTIED(Ped ped, float koTimeOffset, int flags) { invoke<Void>(0x42AC6401ABB8C7E5, ped, koTimeOffset, flags); } // 0x42AC6401ABB8C7E5 b1207
 	// Sets the knockout timer in seconds for a ped that is currently in the knocked-out state.
@@ -10111,7 +10111,7 @@ namespace TASK
 	// param5: using 3 is fine
 	NATIVE_DECL void TASK_LOOK_AT_ENTITY(Ped ped, Entity lookAtTarget, int duration, int p3, int p4, int p5) { invoke<Void>(0x69F4BE8C8CC4796C, ped, lookAtTarget, duration, p3, p4, p5); } // 0x69F4BE8C8CC4796C 0x991D6619 b1207
 	NATIVE_DECL void TASK_CLEAR_LOOK_AT(Ped ped) { invoke<Void>(0x0F804F1DB19B9689, ped); } // 0x0F804F1DB19B9689 0x60EB4054 b1207
-	// Returns true if the ped's current 'IK look-at' target is within `radius` of (x, y, z). This checks the active look-at point (head/eyes) ó not LOS or heading ó and returns false if the ped has no active look-at target. Typical radius range: 1.0-30.0.
+	// Returns true if the ped's current 'IK look-at' target is within `radius` of (x, y, z). This checks the active look-at point (head/eyes) ‚Äî not LOS or heading ‚Äî and returns false if the ped has no active look-at target. Typical radius range: 1.0-30.0.
 	NATIVE_DECL BOOL _IS_PED_LOOKING_AT_COORD(Ped ped, float x, float y, float z, float radius) { return invoke<BOOL>(0x508F5053E3F6F0C4, ped, x, y, z, radius); } // 0x508F5053E3F6F0C4 b1207
 	NATIVE_DECL BOOL _IS_PED_LOOKING_AT_COORD(Ped ped, Vector3 vec, float radius) { return invoke<BOOL>(0x508F5053E3F6F0C4, ped, vec.x, vec.y, vec.z, radius); } // 0x508F5053E3F6F0C4 b1207
 	NATIVE_DECL void _0x23767D80C7EED7C6(Any p0, Any p1) { invoke<Void>(0x23767D80C7EED7C6, p0, p1); } // 0x23767D80C7EED7C6 b1311
@@ -10837,7 +10837,7 @@ namespace TASK
 	NATIVE_DECL void _0x801BD27403F3CBA0(Any p0, Any p1, Any p2, Any p3) { invoke<Void>(0x801BD27403F3CBA0, p0, p1, p2, p3); } // 0x801BD27403F3CBA0 b1207
 	// Controls intimidated/hogtied ped facing.
 	// If useLimits=false, always face the player; if =true, clamp facing within [minAngle, maxAngle] degrees.
-	// Angle note: the range defines the allowed yaw cone around the intimidatoróe.g., [0,90] permits a quarter-turn, [-30,30] a tight ±30∞, and wider ranges allow more swivel.
+	// Angle note: the range defines the allowed yaw cone around the intimidator‚Äîe.g., [0,90] permits a quarter-turn, [-30,30] a tight ¬±30¬∞, and wider ranges allow more swivel.
 	NATIVE_DECL void _SET_INTIMIDATED_FACING_ANGLE(Ped ped, BOOL useLimits, float minAngle, float maxAngle) { invoke<Void>(0x0FE797DD9F70DFA6, ped, useLimits, minAngle, maxAngle); } // 0x0FE797DD9F70DFA6 b1207
 	NATIVE_DECL void TASK_PERSISTENT_CHARACTER(Ped ped) { invoke<Void>(0x4391700CBD89C3D8, ped); } // 0x4391700CBD89C3D8 b1207
 	// Swaps the wagon/coach reins control between the ped and their adjacent front-seat partner.
@@ -10866,7 +10866,7 @@ namespace TASK
 	NATIVE_DECL void _0x88FD60D846D9CD63(Ped ped) { invoke<Void>(0x88FD60D846D9CD63, ped); } // 0x88FD60D846D9CD63 b1207
 	NATIVE_DECL void _0x9050DF2C53801208(Ped ped, float p1) { invoke<Void>(0x9050DF2C53801208, ped, p1); } // 0x9050DF2C53801208 b1207
 	NATIVE_DECL void _0x22CDBF317C40A122(Ped ped) { invoke<Void>(0x22CDBF317C40A122, ped); } // 0x22CDBF317C40A122 b1207
-	// Returns whether the ìHold to Reel [Fishing]î gameplay setting is currently enabled.
+	// Returns whether the ‚ÄúHold to Reel [Fishing]‚Äù gameplay setting is currently enabled.
 	NATIVE_DECL BOOL _GET_HOLD_TO_REEL_SETTING_ENABLED() { return invoke<BOOL>(0x5952DFA38FA529FE); } // 0x5952DFA38FA529FE b1232
 	// https://github.com/femga/rdr3_discoveries/blob/master/animations/kit_emotes_list.lua
 	// emote: https://alloc8or.re/rdr3/doc/enums/eEmote.txt

@@ -1,71 +1,9 @@
-#include "..\..\inc\main.h"
-#include "script.h"
-#include "keyboard.h"
 #include "Hook/Manager.h"
 #include <filesystem>
 
-#if !defined PROJECT_NAME
-#define PROJECT_NAME "ImGuiRDR2Hook"
-#endif
-
-//
-// NOTICE:
-// 
-// - If you do not want to read from system.xml, and would rather read from the config, the set __READ_FROM_MY_CONFIG to TRUE
-// - If you do not want to read from the config file, then set __FALLBACK_TO_MY_CONFIG to FALSE
-// - If you do not want to read from either, set then set __FALLBACK_TO_MY_CONFIG to FALSE and set s_bHasConfigBeenRead to TRUE
-//     - Be sure to set hooks::bUsingVulkanHook and hooks::bUsingDX12Hook accordingly
-// 
-// The config file is not required, but you will have to hardcode those booleans.
-// If you do want to use it, then make sure it exists in your game directory.
-//
-
-
-// The config file is --> PROJECT_NAME "_config.txt"
-// e.g. ImGuiRDR2Hook_config.txt
-#define __FALLBACK_TO_MY_CONFIG 1
-#define __READ_FROM_MY_CONFIG 0
-#define __COMPILE_IMGUI 1
-
-
 static bool s_bHasConfigBeenRead = false;
-static void ReadMyConfigFile()
-{
-	if (!std::filesystem::exists("./" PROJECT_NAME "_config.txt"))
-	{
-		Log("[!] Config: " PROJECT_NAME "_config.txt does not exist. Using Vulkan API.");
-		s_bHasConfigBeenRead = true;
-		return;
-	}
 
-	std::ifstream file(PROJECT_NAME "_config.txt", std::ios::in);
-	std::string line = "";
-	while (std::getline(file, line))
-	{
-		if (!line.empty() && !line.starts_with("//"))
-		{
-			size_t idx = line.find_first_of('=');
-			std::string field = line.substr(0, idx);
-			std::string value = line.substr(idx + 1);
-
-			if (field == "HookType")
-			{
-				if (value == "Vulkan") {
-					CImGuiHookManager::SetHookType(eVULKAN);
-				}
-				else if (value == "DX12") {
-					CImGuiHookManager::SetHookType(eDX12);
-				}
-			}
-		}
-	}
-
-	s_bHasConfigBeenRead = true;
-	file.close();
-}
-
-
-static void ReadSystemXmlFile(bool bFallbackToMyConfig)
+static void ReadSystemXmlFile()
 {
 	char* userprofile;
 	size_t length;
@@ -81,43 +19,27 @@ static void ReadSystemXmlFile(bool bFallbackToMyConfig)
 
 			while (std::getline(stream, line))
 			{
-				// fuck it, we will deal with the whitespace
-				if (line.starts_with("    <API>"))
+				if (line.find("kSettingAPI_Vulkan") != std::string::npos)
 				{
-					const char* cstr = line.c_str();
-
-					if (strcmp(cstr, "    <API>kSettingAPI_Vulkan</API>") == 0)
-					{
-						CImGuiHookManager::SetHookType(eVULKAN);
-					}
-					else if (strcmp(cstr, "    <API>kSettingAPI_DX12</API>") == 0)
-					{
-						CImGuiHookManager::SetHookType(eDX12);
-					}
-
-					s_bHasConfigBeenRead = true;
+					CImGuiHookManager::SetGraphicsAPI(eVULKAN);
+					break;
+				}
+				else if (line.find("kSettingAPI_DX12") != std::string::npos)
+				{
+					CImGuiHookManager::SetGraphicsAPI(eDX12);
 					break;
 				}
 			}
 		}
 		else
 		{
-			Log("[!] Config: Failed to find system.xml from %s. bFallbackToMyConfig: %d", settings.generic_string().c_str(), bFallbackToMyConfig);
-			if (bFallbackToMyConfig)
-			{
-				ReadMyConfigFile();
-			}
+			Log("[!] Config: Failed to find system.xml at %s", settings.generic_string().c_str());
 		}
 
 		free(userprofile);
 	}
-	else
-	{
-		Log("[!] Config: _dupenv_s() failed. bFallbackToMyConfig: %d", bFallbackToMyConfig);
-		if (bFallbackToMyConfig)
-		{
-			ReadMyConfigFile();
-		}
+	else {
+		Log("[!] Config: _dupenv_s() failed with error code %d", didFail);
 	}
 }
 
@@ -127,19 +49,12 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 	switch (reason)
 	{
 	case DLL_PROCESS_ATTACH:
-		if (!s_bHasConfigBeenRead)
-		{
-#if __COMPILE_IMGUI
-
-			if (!s_bHasConfigBeenRead)
-			{
-				#if !__READ_FROM_MY_CONFIG
-					ReadSystemXmlFile(__FALLBACK_TO_MY_CONFIG);
-				#else
-					ReadMyConfigFile();
-				#endif //__READ_FROM_MY_CONFIG
-			}
-		}
+		// Commenting out for now
+		//if (!s_bHasConfigBeenRead)
+		//{
+		//	ReadSystemXmlFile();
+		//	s_bHasConfigBeenRead = true;
+		//}
 
 		// After some Windows (security?) update in May 2026 (?), something changed that causes the game to fail to load.
 		// Using DebugView sysinternals I was seeing an error like "Cannot call CreateDXGIFactory from DllMain".
@@ -148,8 +63,8 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 		DisableThreadLibraryCalls(hInstance);
 		CloseHandle(CreateThread(nullptr, 0,(LPTHREAD_START_ROUTINE)[](LPVOID) -> DWORD
 		{
-			constexpr u64 TIMEOUT_MS = 15 * 1000; // 15 seconds
-			const u64 start = GetTickCount64();
+			constexpr ULONGLONG TIMEOUT_MS = 15 * 1000; // 15 seconds
+			const ULONGLONG start = GetTickCount64();
 
 			while (FindWindowA(NULL, "Red Dead Redemption 2") == NULL)
 			{
@@ -166,21 +81,10 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
 			return 0;
 		},
 		nullptr, 0, nullptr));
-
-#endif //__COMPILE_IMGUI
-
-		scriptRegister(hInstance, ScriptMain);
-		keyboardHandlerRegister(OnKeyboardMessage);
 		break;
 	case DLL_PROCESS_DETACH:
-#if __COMPILE_IMGUI
 		s_bHasConfigBeenRead = false;
 		CImGuiHookManager::Shutdown();
-
-#endif //__COMPILE_IMGUI
-
-		scriptUnregister(hInstance);
-		keyboardHandlerUnregister(OnKeyboardMessage);
 		break;
 	}
 

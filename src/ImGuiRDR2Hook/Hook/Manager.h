@@ -2,9 +2,10 @@
 #include <Windows.h>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <mutex>
 #include <dxgi1_4.h>
 #include "MinHook.h"
-#include "../menu.h"
 #include "../kiero/kiero.h"
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_win32.h"
@@ -13,14 +14,16 @@
 
 #define _LOGGING_ENABLED 0
 
-enum HookType : char
+enum eHookGraphicsAPI : char
 {
 	eVULKAN,
 	eDX12,
 };
 
-class CImGuiHookManager
+class __declspec(dllexport) CImGuiHookManager
 {
+	using RenderCallback = void(*)();
+
 public:
 	struct sVK
 	{
@@ -42,28 +45,37 @@ public:
 		static void Unhook();
 	};
 
+	static void RegisterImGuiMenuCB(RenderCallback cb, const char* id = 0, int version = IMGUI_VERSION_NUM);
+	static void UnregisterImGuiMenuCB(RenderCallback cb);
+	static void RunCallbacks();
+
 private:
 	static bool m_initialized;
 	static bool m_shutdownRequested;
-	static HookType m_hookType;
+	static bool m_drawMouse;
+	static eHookGraphicsAPI m_hookAPI;
 	static HWND m_hWnd;
-	static sVK m_vulkanData;
-	static sDX12 m_dx12Data;
-	static sWIN32 m_win32Data;
+
+	struct CallbackData
+	{
+		RenderCallback m_callback = nullptr;
+		const char* m_id = 0;
+	};
+
+	static inline std::vector<CallbackData> m_callbacks;
+	static inline std::mutex m_callbackMutex;
 public:
 	static void Initialize();
 	static void Shutdown();
 
-	static sVK& GetVulkan() { return m_vulkanData; }
-	static sDX12& GetDX12() { return m_dx12Data; }
-	static sWIN32& GetWin32() { return m_win32Data; }
-
 	static bool IsInitialized() { return m_initialized; }
 	static bool IsShutdownRequested() { return m_shutdownRequested; }
-	static HookType GetHookType() { return m_hookType; }
-	static void SetHookType(HookType type) { m_hookType = type; }
+	static eHookGraphicsAPI GetGraphicsAPI() { return m_hookAPI; }
+	static void SetGraphicsAPI(eHookGraphicsAPI api = eVULKAN) { m_hookAPI = api; }
 	static HWND GetGameWindow() { return m_hWnd; }
 	static void SetGameWindow(HWND hWnd) { m_hWnd = hWnd; }
+	static bool ShouldDrawMouse() { return m_drawMouse; }
+	static void SetShouldDrawMouse(bool draw) { m_drawMouse = draw; }
 };
 
 
@@ -79,29 +91,6 @@ namespace hooks
 			case kiero::Status::ModuleNotFoundError:		return "ModuleNotFoundError";
 			case kiero::Status::AlreadyInitializedError:	return "AlreadyInitializedError";
 			case kiero::Status::NotInitializedError:		return "NotInitializedError";
-		}
-
-		return "";
-	}
-
-	inline const char* MHStatusToString(MH_STATUS status)
-	{
-		switch (status)
-		{
-			case MH_UNKNOWN:					return "Unknown MinHook error";
-			case MH_OK:							return "Successful";
-			case MH_ERROR_ALREADY_INITIALIZED:	return "MinHook is already initialized.";
-			case MH_ERROR_NOT_INITIALIZED:		return "MinHook is not initialized yet: or already uninitialized.";
-			case MH_ERROR_ALREADY_CREATED:		return "The hook for the specified target function is already created.";
-			case MH_ERROR_NOT_CREATED:			return "The hook for the specified target function is not created yet.";
-			case MH_ERROR_ENABLED:				return "The hook for the specified target function is already enabled.";
-			case MH_ERROR_DISABLED:				return "The hook for the specified target function is not enabled yet: or already disabled.";
-			case MH_ERROR_NOT_EXECUTABLE:		return "The specified pointer is invalid. It points the address of non-allocated and/or non-executable region.";
-			case MH_ERROR_UNSUPPORTED_FUNCTION: return "The specified target function cannot be hooked.";
-			case MH_ERROR_MEMORY_ALLOC:			return "Failed to allocate memory.";
-			case MH_ERROR_MEMORY_PROTECT:		return "Failed to change the memory protection.";
-			case MH_ERROR_MODULE_NOT_FOUND:		return "The specified module is not loaded.";
-			case MH_ERROR_FUNCTION_NOT_FOUND:	return "The specified function is not found.";
 		}
 
 		return "";
